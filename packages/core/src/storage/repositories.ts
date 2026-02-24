@@ -165,3 +165,70 @@ export function computeTranscriptHash(
 
   return crypto.createHash("sha256").update(content).digest("hex");
 }
+
+// --- Processing runs ---
+
+export interface ProcessingRunParams {
+  callId: string;
+  rubricVersion: string;
+  extractorPromptVersion: string;
+  evaluatorPromptVersion: string;
+  modelExtractor: string;
+  modelEvaluator: string;
+  transcriptHash: string;
+}
+
+export async function createProcessingRun(
+  db: SupabaseClient,
+  params: ProcessingRunParams
+): Promise<{ id: string }> {
+  const { data, error } = await db
+    .from("processing_runs")
+    .insert({
+      call_id: params.callId,
+      status: "running",
+      rubric_version: params.rubricVersion,
+      extractor_prompt_version: params.extractorPromptVersion,
+      evaluator_prompt_version: params.evaluatorPromptVersion,
+      model_extractor: params.modelExtractor,
+      model_evaluator: params.modelEvaluator,
+      transcript_hash: params.transcriptHash,
+    })
+    .select("id")
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+export async function markRunSucceeded(
+  db: SupabaseClient,
+  runId: string
+): Promise<void> {
+  const { error } = await db
+    .from("processing_runs")
+    .update({
+      status: "succeeded",
+      finished_at: new Date().toISOString(),
+    })
+    .eq("id", runId);
+
+  if (error) throw error;
+}
+
+export async function markRunFailed(
+  db: SupabaseClient,
+  runId: string,
+  errorMessage: string
+): Promise<void> {
+  const { error } = await db
+    .from("processing_runs")
+    .update({
+      status: "failed",
+      finished_at: new Date().toISOString(),
+      error: errorMessage,
+    })
+    .eq("id", runId);
+
+  if (error) throw error;
+}

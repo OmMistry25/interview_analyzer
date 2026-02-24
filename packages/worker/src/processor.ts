@@ -7,6 +7,9 @@ import {
   persistParticipants,
   persistUtterances,
   computeTranscriptHash,
+  createProcessingRun,
+  markRunSucceeded,
+  markRunFailed,
 } from "@transcript-evaluator/core/src/storage/repositories";
 
 export async function processJob(
@@ -58,5 +61,24 @@ async function processFathomMeeting(
   const hash = computeTranscriptHash(normalized.utterances);
   console.log(`  Transcript hash: ${hash}`);
 
-  // Processing run + LLM extraction/evaluation will be added in Phases 6-8
+  const run = await createProcessingRun(db, {
+    callId: call.id,
+    rubricVersion: "s0_v1",
+    extractorPromptVersion: "extract_v1",
+    evaluatorPromptVersion: "eval_v1",
+    modelExtractor: "gpt-4o",
+    modelEvaluator: "gpt-4o",
+    transcriptHash: hash,
+  });
+  console.log(`  Processing run: ${run.id}`);
+
+  try {
+    // LLM extraction + evaluation will be added in Phases 7-8
+    await markRunSucceeded(db, run.id);
+    console.log(`  Run succeeded.`);
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    await markRunFailed(db, run.id, msg);
+    throw err;
+  }
 }
