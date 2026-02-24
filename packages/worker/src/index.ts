@@ -1,1 +1,6 @@
-export {};
+import dotenv from "dotenv";
+import path from "path";
+
+dotenv.config({ path: path.resolve(__dirname, "../../../.env"), quiet: true });
+
+console.log("env loaded");
