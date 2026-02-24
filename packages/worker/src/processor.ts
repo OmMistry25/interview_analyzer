@@ -1,22 +1,62 @@
 import { SupabaseClient } from "@supabase/supabase-js";
+import { isFathomPayload } from "@transcript-evaluator/core/src/ingestion/fathomPayload";
+import { mapFathomToNormalized } from "@transcript-evaluator/core/src/ingestion/mapping";
+import {
+  getWebhookEvent,
+  upsertCall,
+  persistParticipants,
+  persistUtterances,
+  computeTranscriptHash,
+} from "@transcript-evaluator/core/src/storage/repositories";
 
 export async function processJob(
   db: SupabaseClient,
   job: { id: string; type: string; payload: Record<string, unknown> }
 ): Promise<void> {
-  console.log(`Processing job ${job.id} [${job.type}]`);
-
   switch (job.type) {
     case "PROCESS_FATHOM_MEETING":
-      // Will be implemented in Phase 5+
-      console.log("  payload:", JSON.stringify(job.payload));
+      await processFathomMeeting(db, job.payload);
       break;
 
     case "REPROCESS_CALL":
-      console.log("  reprocess payload:", JSON.stringify(job.payload));
+      console.log("REPROCESS_CALL not yet implemented");
       break;
 
     default:
       throw new Error(`Unknown job type: ${job.type}`);
   }
+}
+
+async function processFathomMeeting(
+  db: SupabaseClient,
+  payload: Record<string, unknown>
+): Promise<void> {
+  const eventId = payload.webhook_event_id as string;
+  if (!eventId) throw new Error("Missing webhook_event_id in job payload");
+
+  const event = await getWebhookEvent(db, eventId);
+  if (!event) throw new Error(`Webhook event ${eventId} not found`);
+
+  if (!isFathomPayload(event.raw_body)) {
+    throw new Error("Webhook body is not a valid Fathom payload");
+  }
+
+  const normalized = mapFathomToNormalized(event.raw_body.data);
+  console.log(`  Mapped call: "${normalized.title}" with ${normalized.utterances.length} utterances`);
+
+  const call = await upsertCall(db, normalized);
+  console.log(`  Call ID: ${call.id}`);
+
+  const participants = await persistParticipants(db, call.id, normalized.participants);
+  const participantMap = new Map<string, string>();
+  for (const p of participants) {
+    participantMap.set(p.name, p.id);
+  }
+
+  await persistUtterances(db, call.id, normalized.utterances, participantMap);
+
+  const hash = computeTranscriptHash(normalized.utterances);
+  console.log(`  Transcript hash: ${hash}`);
+
+  // Processing run + LLM extraction/evaluation will be added in Phases 6-8
 }
