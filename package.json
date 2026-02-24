@@ -1,0 +1,8 @@
+{
+  "name": "transcript-evaluator",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ]
+}
