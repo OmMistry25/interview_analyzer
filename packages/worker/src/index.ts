@@ -7,7 +7,7 @@ import { runOnce } from "./runOnce";
 
 async function main() {
   console.log("Worker starting...");
-  const processed = await runOnce(5);
+  const processed = await runOnce(15);
   console.log(`Worker done. Processed ${processed} job(s).`);
   process.exit(0);
 }

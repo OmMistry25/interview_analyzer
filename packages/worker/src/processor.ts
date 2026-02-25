@@ -1,6 +1,6 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { isFathomMeeting } from "@transcript-evaluator/core/src/ingestion/fathomPayload";
-import { mapFathomToNormalized } from "@transcript-evaluator/core/src/ingestion/mapping";
+import { mapFathomToNormalized, buildMeetingContext } from "@transcript-evaluator/core/src/ingestion/mapping";
 import { extractSignals } from "@transcript-evaluator/core/src/extraction/extractor";
 import { evaluateSignals } from "@transcript-evaluator/core/src/evaluation/evaluator";
 import { crossCheckEvaluation } from "@transcript-evaluator/core/src/evaluation/rulesEngine";
@@ -69,7 +69,7 @@ async function processFathomMeeting(
   const run = await createProcessingRun(db, {
     callId: call.id,
     rubricVersion: "s0_v1",
-    extractorPromptVersion: "extract_v1",
+    extractorPromptVersion: "extract_v2",
     evaluatorPromptVersion: "eval_v1",
     modelExtractor: "gpt-4o",
     modelEvaluator: "gpt-4o",
@@ -79,8 +79,9 @@ async function processFathomMeeting(
 
   try {
     // Phase 7: Extract signals
-    console.log("  Extracting signals...");
-    const signals = await extractSignals(normalized.utterances);
+    const meetingCtx = buildMeetingContext(normalized);
+    console.log(`  Extracting signals... (prospect: ${meetingCtx.prospectCompany ?? "unknown"})`);
+    const signals = await extractSignals(normalized.utterances, meetingCtx);
     console.log("  Signals extracted.");
 
     await persistExtractedSignals(db, {

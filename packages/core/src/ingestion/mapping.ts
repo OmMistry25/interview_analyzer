@@ -1,6 +1,6 @@
 import { FathomMeeting } from "./fathomPayload";
 import { normalizeText } from "./normalize";
-import { NormalizedCall, NormalizedParticipant, NormalizedUtterance } from "../types/normalized";
+import { NormalizedCall, NormalizedParticipant, NormalizedUtterance, MeetingContext } from "../types/normalized";
 
 function parseTimestampToSec(ts: string): number | null {
   // "HH:MM:SS" → total seconds
@@ -48,5 +48,51 @@ export function mapFathomToNormalized(meeting: FathomMeeting): NormalizedCall {
     fathomUrl: meeting.url ?? null,
     participants,
     utterances,
+  };
+}
+
+const OUR_COMPANY = "Console";
+
+/**
+ * Extract the prospect company name from meeting titles like:
+ *   "Console/Lattice (Legal)" → "Lattice"
+ *   "Console // Goat HR focused demo" → "Goat HR"
+ *   "(Clio/Console) - Connection Call" → "Clio"
+ */
+export function parseMeetingTitle(title: string): string | null {
+  // Remove parenthesized wrapper like "(Clio/Console)"
+  const unwrapped = title.replace(/^\(([^)]+)\)/, "$1");
+
+  // Split on " // " or " / " or "/"
+  const parts = unwrapped.split(/\s*\/\/\s*|\s*\/\s*/);
+  if (parts.length < 2) return null;
+
+  // Find the part that is NOT our company
+  for (const raw of parts) {
+    const cleaned = raw.trim();
+    if (cleaned.toLowerCase() === OUR_COMPANY.toLowerCase()) continue;
+    // Strip trailing descriptors like " - POC Kickoff!" or " focused demo"
+    const companyName = cleaned
+      .replace(/\s*[-–—].*$/, "")
+      .replace(/\s+(focused|intro|demo|sync|meeting|call|kickoff).*$/i, "")
+      .replace(/\s*\(.*\)$/, "")
+      .trim();
+    if (companyName.length > 0) return companyName;
+  }
+
+  return null;
+}
+
+export function buildMeetingContext(call: NormalizedCall): MeetingContext {
+  return {
+    meetingTitle: call.title,
+    ourCompany: OUR_COMPANY,
+    prospectCompany: parseMeetingTitle(call.title),
+    internalAttendees: call.participants
+      .filter((p) => p.role === "ae")
+      .map((p) => ({ name: p.name, email: p.email })),
+    externalAttendees: call.participants
+      .filter((p) => p.role === "prospect")
+      .map((p) => ({ name: p.name, email: p.email })),
   };
 }

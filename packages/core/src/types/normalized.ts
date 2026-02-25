@@ -25,3 +25,11 @@ export interface NormalizedCall {
   participants: NormalizedParticipant[];
   utterances: NormalizedUtterance[];
 }
+
+export interface MeetingContext {
+  meetingTitle: string;
+  ourCompany: string;
+  prospectCompany: string | null;
+  internalAttendees: { name: string; email: string | null }[];
+  externalAttendees: { name: string; email: string | null }[];
+}

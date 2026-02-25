@@ -11,7 +11,8 @@ const nonUnknownHasEvidence = (
 ) => {
   const isUnknown = field.value === "unknown";
   const isEmpty = Array.isArray(field.value) && field.value.length === 0;
-  if (!isUnknown && !isEmpty && field.evidence.length === 0) {
+  const isFalse = field.value === false;
+  if (!isUnknown && !isEmpty && !isFalse && field.evidence.length === 0) {
     ctx.addIssue({
       code: z.ZodIssueCode.custom,
       message: "Non-unknown value must include at least one evidence quote",
@@ -22,7 +23,7 @@ const nonUnknownHasEvidence = (
 const signalFieldWithEvidence = signalField.superRefine(nonUnknownHasEvidence);
 
 export const extractedSignalsSchema = z.object({
-  company_name: signalFieldWithEvidence,
+  company_name: signalField, // Evidence optional — often derived from meeting title metadata
   employee_count: signalFieldWithEvidence,
   current_solution: signalFieldWithEvidence,
   pain_points: signalFieldWithEvidence,
