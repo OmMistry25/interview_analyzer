@@ -1,5 +1,6 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import Link from "next/link";
+import ReprocessButton from "@/components/ReprocessButton";
 
 interface SignalField {
   value: unknown;
@@ -179,6 +180,8 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
       {!evaluation && !signals && (
         <p style={{ marginTop: 24, color: "#888" }}>Processing not yet completed for this call.</p>
       )}
+
+      <ReprocessButton callId={id} />
     </div>
   );
 }
