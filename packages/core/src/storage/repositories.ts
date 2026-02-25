@@ -232,3 +232,57 @@ export async function markRunFailed(
 
   if (error) throw error;
 }
+
+// --- Extracted signals ---
+
+export async function persistExtractedSignals(
+  db: SupabaseClient,
+  params: {
+    processingRunId: string;
+    callId: string;
+    signalsJson: unknown;
+    qualityChecks?: unknown;
+  }
+): Promise<{ id: string }> {
+  const { data, error } = await db
+    .from("extracted_signals")
+    .insert({
+      processing_run_id: params.processingRunId,
+      call_id: params.callId,
+      signals_json: params.signalsJson,
+      quality_checks: params.qualityChecks ?? null,
+    })
+    .select("id")
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+// --- Evaluations ---
+
+export async function persistEvaluation(
+  db: SupabaseClient,
+  params: {
+    processingRunId: string;
+    callId: string;
+    overallStatus: string;
+    score: number;
+    evaluationJson: unknown;
+  }
+): Promise<{ id: string }> {
+  const { data, error } = await db
+    .from("evaluations")
+    .insert({
+      processing_run_id: params.processingRunId,
+      call_id: params.callId,
+      overall_status: params.overallStatus,
+      score: params.score,
+      evaluation_json: params.evaluationJson,
+    })
+    .select("id")
+    .single();
+
+  if (error) throw error;
+  return data;
+}

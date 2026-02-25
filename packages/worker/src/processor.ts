@@ -1,6 +1,8 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { isFathomPayload } from "@transcript-evaluator/core/src/ingestion/fathomPayload";
 import { mapFathomToNormalized } from "@transcript-evaluator/core/src/ingestion/mapping";
+import { extractSignals } from "@transcript-evaluator/core/src/extraction/extractor";
+import { evaluateSignals } from "@transcript-evaluator/core/src/evaluation/evaluator";
 import {
   getWebhookEvent,
   upsertCall,
@@ -10,6 +12,8 @@ import {
   createProcessingRun,
   markRunSucceeded,
   markRunFailed,
+  persistExtractedSignals,
+  persistEvaluation,
 } from "@transcript-evaluator/core/src/storage/repositories";
 
 export async function processJob(
@@ -73,7 +77,30 @@ async function processFathomMeeting(
   console.log(`  Processing run: ${run.id}`);
 
   try {
-    // LLM extraction + evaluation will be added in Phases 7-8
+    // Phase 7: Extract signals
+    console.log("  Extracting signals...");
+    const signals = await extractSignals(normalized.utterances);
+    console.log("  Signals extracted.");
+
+    await persistExtractedSignals(db, {
+      processingRunId: run.id,
+      callId: call.id,
+      signalsJson: signals,
+    });
+
+    // Phase 8: Evaluate
+    console.log("  Evaluating...");
+    const evaluation = await evaluateSignals(signals);
+    console.log(`  Evaluation: ${evaluation.overall_status} (score: ${evaluation.score})`);
+
+    await persistEvaluation(db, {
+      processingRunId: run.id,
+      callId: call.id,
+      overallStatus: evaluation.overall_status,
+      score: evaluation.score,
+      evaluationJson: evaluation,
+    });
+
     await markRunSucceeded(db, run.id);
     console.log(`  Run succeeded.`);
   } catch (err) {
