@@ -1,5 +1,5 @@
 import { SupabaseClient } from "@supabase/supabase-js";
-import { isFathomPayload } from "@transcript-evaluator/core/src/ingestion/fathomPayload";
+import { isFathomMeeting } from "@transcript-evaluator/core/src/ingestion/fathomPayload";
 import { mapFathomToNormalized } from "@transcript-evaluator/core/src/ingestion/mapping";
 import { extractSignals } from "@transcript-evaluator/core/src/extraction/extractor";
 import { evaluateSignals } from "@transcript-evaluator/core/src/evaluation/evaluator";
@@ -45,11 +45,11 @@ async function processFathomMeeting(
   const event = await getWebhookEvent(db, eventId);
   if (!event) throw new Error(`Webhook event ${eventId} not found`);
 
-  if (!isFathomPayload(event.raw_body)) {
-    throw new Error("Webhook body is not a valid Fathom payload");
+  if (!isFathomMeeting(event.raw_body)) {
+    throw new Error("Webhook body is not a valid Fathom meeting payload");
   }
 
-  const normalized = mapFathomToNormalized(event.raw_body.data);
+  const normalized = mapFathomToNormalized(event.raw_body);
   console.log(`  Mapped call: "${normalized.title}" with ${normalized.utterances.length} utterances`);
 
   const call = await upsertCall(db, normalized);
