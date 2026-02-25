@@ -6,7 +6,7 @@ interface CallRow {
   title: string;
   start_time: string | null;
   source: string;
-  evaluations: { overall_status: string; score: number }[];
+  evaluations: { overall_status: string; score: number; created_at: string }[];
 }
 
 export default async function CallsListPage() {
@@ -14,7 +14,7 @@ export default async function CallsListPage() {
 
   const { data: calls, error } = await supabase
     .from("calls")
-    .select("id, title, start_time, source, evaluations(overall_status, score)")
+    .select("id, title, start_time, source, evaluations(overall_status, score, created_at)")
     .order("created_at", { ascending: false })
     .limit(50);
 
@@ -38,7 +38,10 @@ export default async function CallsListPage() {
         </thead>
         <tbody>
           {typedCalls.map((call) => {
-            const eval_ = call.evaluations?.[0];
+            const sorted = [...(call.evaluations ?? [])].sort(
+              (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            );
+            const eval_ = sorted[0];
             return (
               <tr key={call.id} style={{ borderBottom: "1px solid #eee" }}>
                 <td style={{ padding: 8 }}>
