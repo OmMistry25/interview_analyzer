@@ -3,6 +3,7 @@ import { isFathomPayload } from "@transcript-evaluator/core/src/ingestion/fathom
 import { mapFathomToNormalized } from "@transcript-evaluator/core/src/ingestion/mapping";
 import { extractSignals } from "@transcript-evaluator/core/src/extraction/extractor";
 import { evaluateSignals } from "@transcript-evaluator/core/src/evaluation/evaluator";
+import { crossCheckEvaluation } from "@transcript-evaluator/core/src/evaluation/rulesEngine";
 import {
   getWebhookEvent,
   upsertCall,
@@ -92,6 +93,13 @@ async function processFathomMeeting(
     console.log("  Evaluating...");
     const evaluation = await evaluateSignals(signals);
     console.log(`  Evaluation: ${evaluation.overall_status} (score: ${evaluation.score})`);
+
+    // Phase 9: Rules engine cross-check
+    const crossCheck = crossCheckEvaluation(signals, evaluation);
+    if (crossCheck.mismatch) {
+      console.log(`  MISMATCH: ${crossCheck.mismatch}`);
+      evaluation.overall_status = crossCheck.status;
+    }
 
     await persistEvaluation(db, {
       processingRunId: run.id,
