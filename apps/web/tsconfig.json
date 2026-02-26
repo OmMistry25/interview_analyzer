@@ -19,7 +19,8 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "@transcript-evaluator/core/*": ["../../packages/core/*"]
     }
   },
   "include": [

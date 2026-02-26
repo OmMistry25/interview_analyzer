@@ -2,6 +2,11 @@
   "name": "@transcript-evaluator/core",
   "version": "0.0.1",
   "private": true,
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./src/*": "./src/*"
+  },
   "dependencies": {
     "@supabase/supabase-js": "^2.97.0",
     "openai": "^6.24.0",
