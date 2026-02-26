@@ -77,7 +77,22 @@ export function parseMeetingTitle(title: string): string | null {
   for (const raw of parts) {
     const cleaned = raw.trim();
     if (cleaned.toLowerCase() === OUR_COMPANY.toLowerCase()) continue;
-    // Strip trailing descriptors like " - POC Kickoff!" or " focused demo"
+
+    // Check for "Name (Company)" vs "Company (Descriptor)" pattern
+    const parenMatch = cleaned.match(/^(.+?)\s*\(([^)]+)\)$/);
+    if (parenMatch) {
+      const before = parenMatch[1].trim();
+      const inner = parenMatch[2].trim();
+      const isDescriptor = /^(legal|sales|hr|demo|intro|meeting|call|sync|ops|engineering|finance|marketing|security|it|product|design|support)$/i.test(inner);
+      if (isDescriptor) {
+        return before;
+      }
+      if (inner.toLowerCase() !== OUR_COMPANY.toLowerCase() && inner.length > 0) {
+        return inner;
+      }
+    }
+
+    // Fallback: strip trailing descriptors
     const companyName = cleaned
       .replace(/\s*[-–—].*$/, "")
       .replace(/\s+(focused|intro|demo|sync|meeting|call|kickoff).*$/i, "")
