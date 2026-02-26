@@ -308,8 +308,10 @@ function SignalsTable({ signals }: { signals: ExtractedSignals }) {
                   </td>
                 </tr>
               ))}
-              {(group.fields as Record<string, unknown>).prospect_sentiment && (() => {
-                const s = (group.fields as Record<string, unknown>).prospect_sentiment as { disposition: string; summary: string; evidence: string[] };
+              {(() => {
+                const raw = (group.fields as Record<string, unknown>).prospect_sentiment;
+                if (!raw) return null;
+                const s = raw as { disposition: string; summary: string; evidence: string[] };
                 return (
                   <tr className="sentiment-row">
                     <td style={{ fontWeight: 500 }}>prospect sentiment</td>
@@ -317,11 +319,11 @@ function SignalsTable({ signals }: { signals: ExtractedSignals }) {
                       <span className={`sentiment-${s.disposition}`}>
                         {s.disposition}
                       </span>
-                      {(group.fields as Record<string, unknown>).budget_alignment && (
+                      {(group.fields as Record<string, unknown>).budget_alignment ? (
                         <span style={{ fontWeight: 400, color: "var(--text-secondary)", marginLeft: 8, fontSize: 12 }}>
                           (alignment: {String((group.fields as Record<string, unknown>).budget_alignment)})
                         </span>
-                      )}
+                      ) : null}
                     </td>
                     <td>
                       <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>{s.summary}</span>
