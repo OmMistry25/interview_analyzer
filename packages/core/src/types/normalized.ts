@@ -30,6 +30,7 @@ export interface MeetingContext {
   meetingTitle: string;
   ourCompany: string;
   prospectCompany: string | null;
+  aeName: string | null;
   internalAttendees: { name: string; email: string | null }[];
   externalAttendees: { name: string; email: string | null }[];
 }

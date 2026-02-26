@@ -20,22 +20,18 @@ export default function ReprocessButton({ callId }: { callId: string }) {
     setLoading(false);
 
     if (res.ok) {
-      setResult(`Reprocess job queued (${data.job_id})`);
+      setResult("Queued for reprocessing.");
     } else {
       setResult(`Error: ${data.error}`);
     }
   }
 
   return (
-    <div style={{ marginTop: 16 }}>
-      <button
-        onClick={handleReprocess}
-        disabled={loading}
-        style={{ padding: "8px 16px", cursor: "pointer" }}
-      >
+    <div className="mt-24">
+      <button onClick={handleReprocess} disabled={loading} className="btn">
         {loading ? "Queuing..." : "Reprocess Call"}
       </button>
-      {result && <p style={{ marginTop: 8, fontSize: 13 }}>{result}</p>}
+      {result && <p className="feedback-success mt-16" style={{ fontSize: 13 }}>{result}</p>}
     </div>
   );
 }

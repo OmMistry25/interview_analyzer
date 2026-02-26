@@ -9,13 +9,17 @@ function parseTimestampToSec(ts: string): number | null {
   return parts[0] * 3600 + parts[1] * 60 + parts[2];
 }
 
+function isKnownAE(name: string): boolean {
+  const lower = name.toLowerCase();
+  return KNOWN_AES.some((ae) => lower.includes(ae.toLowerCase()));
+}
+
 export function mapFathomToNormalized(meeting: FathomMeeting): NormalizedCall {
-  const participants: NormalizedParticipant[] = (meeting.calendar_invitees ?? []).map((inv) => ({
-    name: inv.name ?? "Unknown",
-    email: inv.email ?? null,
-    role: inv.is_external ? "prospect" as const : "ae" as const,
-    sourceLabel: inv.matched_speaker_display_name ?? null,
-  }));
+  const participants: NormalizedParticipant[] = (meeting.calendar_invitees ?? []).map((inv) => {
+    const name = inv.name ?? "Unknown";
+    const role = isKnownAE(name) ? "ae" as const : inv.is_external ? "prospect" as const : "ae" as const;
+    return { name, email: inv.email ?? null, role, sourceLabel: inv.matched_speaker_display_name ?? null };
+  });
 
   // Add recorded_by as a participant if not already in invitees
   const recorderEmail = meeting.recorded_by?.email;
@@ -53,6 +57,8 @@ export function mapFathomToNormalized(meeting: FathomMeeting): NormalizedCall {
 
 const OUR_COMPANY = "Console";
 
+export const KNOWN_AES = ["Sam Vila", "Eric Bower", "Christian", "Michael"];
+
 /**
  * Extract the prospect company name from meeting titles like:
  *   "Console/Lattice (Legal)" → "Lattice"
@@ -84,13 +90,18 @@ export function parseMeetingTitle(title: string): string | null {
 }
 
 export function buildMeetingContext(call: NormalizedCall): MeetingContext {
+  const internalAttendees = call.participants
+    .filter((p) => p.role === "ae")
+    .map((p) => ({ name: p.name, email: p.email }));
+
+  const knownAE = internalAttendees.find((a) => isKnownAE(a.name));
+
   return {
     meetingTitle: call.title,
     ourCompany: OUR_COMPANY,
     prospectCompany: parseMeetingTitle(call.title),
-    internalAttendees: call.participants
-      .filter((p) => p.role === "ae")
-      .map((p) => ({ name: p.name, email: p.email })),
+    aeName: knownAE?.name ?? internalAttendees[0]?.name ?? null,
+    internalAttendees,
     externalAttendees: call.participants
       .filter((p) => p.role === "prospect")
       .map((p) => ({ name: p.name, email: p.email })),

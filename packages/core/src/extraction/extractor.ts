@@ -4,7 +4,7 @@ import path from "path";
 import { extractedSignalsSchema, ExtractedSignals } from "./schemas";
 import { NormalizedUtterance, MeetingContext } from "../types/normalized";
 
-const PROMPT_PATH = path.resolve(__dirname, "../prompts/extractor_v2.txt");
+const PROMPT_PATH = path.resolve(__dirname, "../prompts/extractor_v3.txt");
 
 function buildMetadataBlock(ctx: MeetingContext): string {
   const lines: string[] = [

@@ -1,5 +1,6 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import Link from "next/link";
+import ImportMeetingForm from "@/components/ImportMeetingForm";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +9,12 @@ interface CallRow {
   title: string;
   start_time: string | null;
   source: string;
-  evaluations: { overall_status: string; score: number; created_at: string }[];
+  evaluations: {
+    overall_status: string;
+    score: number;
+    stage_1_probability: number | null;
+    created_at: string;
+  }[];
 }
 
 export default async function CallsListPage() {
@@ -16,26 +22,35 @@ export default async function CallsListPage() {
 
   const { data: calls, error } = await supabase
     .from("calls")
-    .select("id, title, start_time, source, evaluations(overall_status, score, created_at)")
+    .select("id, title, start_time, source, evaluations(overall_status, score, stage_1_probability, created_at)")
     .order("created_at", { ascending: false })
     .limit(50);
 
   if (error) {
-    return <div style={{ padding: 24, fontFamily: "system-ui" }}>Error loading calls: {error.message}</div>;
+    return (
+      <div className="page-container">
+        <p className="feedback-error">Error loading calls: {error.message}</p>
+      </div>
+    );
   }
 
   const typedCalls = (calls ?? []) as CallRow[];
 
   return (
-    <div style={{ padding: 24, fontFamily: "system-ui", maxWidth: 960, margin: "0 auto" }}>
-      <h1 style={{ marginBottom: 24 }}>Calls</h1>
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+    <div className="page-container">
+      <div className="page-header">
+        <h1>Calls</h1>
+      </div>
+
+      <ImportMeetingForm />
+
+      <table className="table">
         <thead>
-          <tr style={{ borderBottom: "2px solid #ddd", textAlign: "left" }}>
-            <th style={{ padding: 8 }}>Title</th>
-            <th style={{ padding: 8 }}>Date</th>
-            <th style={{ padding: 8 }}>Status</th>
-            <th style={{ padding: 8 }}>Score</th>
+          <tr>
+            <th>Title</th>
+            <th>Date</th>
+            <th>Status</th>
+            <th>Stage 1</th>
           </tr>
         </thead>
         <tbody>
@@ -45,26 +60,32 @@ export default async function CallsListPage() {
             );
             const eval_ = sorted[0];
             return (
-              <tr key={call.id} style={{ borderBottom: "1px solid #eee" }}>
-                <td style={{ padding: 8 }}>
-                  <Link href={`/dashboard/calls/${call.id}`} style={{ color: "#0066cc" }}>
+              <tr key={call.id}>
+                <td>
+                  <Link href={`/dashboard/calls/${call.id}`}>
                     {call.title}
                   </Link>
                 </td>
-                <td style={{ padding: 8 }}>
+                <td style={{ color: "var(--text-secondary)" }}>
                   {call.start_time ? new Date(call.start_time).toLocaleDateString() : "—"}
                 </td>
-                <td style={{ padding: 8 }}>
+                <td>
                   <StatusBadge status={eval_?.overall_status} />
                 </td>
-                <td style={{ padding: 8 }}>{eval_?.score ?? "—"}</td>
+                <td>
+                  {eval_?.stage_1_probability != null ? (
+                    <ProbabilityBadge value={eval_.stage_1_probability} />
+                  ) : (
+                    <span style={{ color: "var(--text-tertiary)" }}>—</span>
+                  )}
+                </td>
               </tr>
             );
           })}
           {typedCalls.length === 0 && (
             <tr>
-              <td colSpan={4} style={{ padding: 24, textAlign: "center", color: "#888" }}>
-                No calls yet.
+              <td colSpan={4} className="table-empty">
+                No calls yet. Import a Fathom meeting link above.
               </td>
             </tr>
           )}
@@ -75,18 +96,21 @@ export default async function CallsListPage() {
 }
 
 function StatusBadge({ status }: { status?: string }) {
-  if (!status) return <span style={{ color: "#888" }}>Pending</span>;
+  if (!status) return <span className="badge badge-gray">Pending</span>;
 
-  const colors: Record<string, string> = {
-    Qualified: "#16a34a",
-    Yellow: "#ca8a04",
-    Disqualified: "#dc2626",
-    "Needs Review": "#9333ea",
+  const cls: Record<string, string> = {
+    Qualified: "badge-green",
+    "Needs Work": "badge-amber",
+    Unqualified: "badge-red",
   };
 
-  return (
-    <span style={{ color: colors[status] ?? "#888", fontWeight: 600 }}>
-      {status}
-    </span>
-  );
+  return <span className={`badge ${cls[status] ?? "badge-gray"}`}>{status}</span>;
+}
+
+function ProbabilityBadge({ value }: { value: number }) {
+  let cls = "badge-red";
+  if (value >= 61) cls = "badge-green";
+  else if (value >= 41) cls = "badge-amber";
+
+  return <span className={`badge ${cls}`}>{value}%</span>;
 }

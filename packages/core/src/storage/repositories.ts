@@ -268,6 +268,7 @@ export async function persistEvaluation(
     callId: string;
     overallStatus: string;
     score: number;
+    stage1Probability: number;
     evaluationJson: unknown;
   }
 ): Promise<{ id: string }> {
@@ -278,6 +279,7 @@ export async function persistEvaluation(
       call_id: params.callId,
       overall_status: params.overallStatus,
       score: params.score,
+      stage_1_probability: params.stage1Probability,
       evaluation_json: params.evaluationJson,
     })
     .select("id")

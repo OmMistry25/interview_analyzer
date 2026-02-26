@@ -28,38 +28,39 @@ export default function LoginPage() {
   }
 
   return (
-    <div style={{ maxWidth: 400, margin: "100px auto", fontFamily: "system-ui" }}>
-      <h1 style={{ marginBottom: 24 }}>Sign In</h1>
-      <form onSubmit={handleLogin}>
-        <div style={{ marginBottom: 12 }}>
-          <label style={{ display: "block", marginBottom: 4 }}>Email</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            style={{ width: "100%", padding: 8, boxSizing: "border-box" }}
-          />
-        </div>
-        <div style={{ marginBottom: 12 }}>
-          <label style={{ display: "block", marginBottom: 4 }}>Password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            style={{ width: "100%", padding: 8, boxSizing: "border-box" }}
-          />
-        </div>
-        {error && <p style={{ color: "red" }}>{error}</p>}
-        <button
-          type="submit"
-          disabled={loading}
-          style={{ padding: "8px 24px", cursor: "pointer" }}
-        >
-          {loading ? "Signing in..." : "Sign In"}
-        </button>
-      </form>
+    <div className="login-wrapper">
+      <div className="login-card">
+        <h1>Sign in</h1>
+        <p className="login-subtitle">Interview Analyzer</p>
+        <form onSubmit={handleLogin}>
+          <div className="form-group">
+            <label className="form-label">Email</label>
+            <input
+              type="email"
+              className="input"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              placeholder="you@company.com"
+            />
+          </div>
+          <div className="form-group">
+            <label className="form-label">Password</label>
+            <input
+              type="password"
+              className="input"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              placeholder="••••••••"
+            />
+          </div>
+          {error && <p className="feedback-error" style={{ marginBottom: 12 }}>{error}</p>}
+          <button type="submit" disabled={loading} className="btn btn-primary" style={{ width: "100%" }}>
+            {loading ? "Signing in..." : "Sign in"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
