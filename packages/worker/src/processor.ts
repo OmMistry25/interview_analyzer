@@ -207,7 +207,7 @@ async function reprocessCall(
     .map((p) => ({ name: p.name as string, email: (p.email as string) ?? null }));
 
   const knownAE = internalAttendees.find((a) =>
-    KNOWN_AES.some((ae) => a.name.toLowerCase().includes(ae.toLowerCase()))
+    KNOWN_AES.some((ae: string) => a.name.toLowerCase().includes(ae.toLowerCase()))
   );
 
   const meetingCtx = {
