@@ -24,6 +24,11 @@ export async function POST(req: NextRequest) {
 
   const companyName = parseMeetingTitle(title);
 
+  // "Fannie Mae" → "fanniemae.com", "HubSpot" → "hubspot.com"
+  const companyDomainGuess = companyName
+    ? companyName.toLowerCase().replace(/[^a-z0-9]/g, "") + ".com"
+    : null;
+
   const allNames: string[] = [];
   for (const inv of invitees) {
     if (inv.name) allNames.push(inv.name);
@@ -45,6 +50,7 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     company_name: companyName,
+    company_domain_guess: companyDomainGuess,
     ae_name: aeName,
     recording_id: recordingId,
     meeting_title: title,
