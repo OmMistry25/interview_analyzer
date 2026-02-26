@@ -69,8 +69,8 @@ export function parseMeetingTitle(title: string): string | null {
   // Remove parenthesized wrapper like "(Clio/Console)"
   const unwrapped = title.replace(/^\(([^)]+)\)/, "$1");
 
-  // Split on " // " or " / " or "/"
-  const parts = unwrapped.split(/\s*\/\/\s*|\s*\/\s*/);
+  // Split on " // " or " / " or "/" or " x " or " <> "
+  const parts = unwrapped.split(/\s*\/\/\s*|\s*\/\s*|\s+x\s+|\s*<>\s*/);
   if (parts.length < 2) return null;
 
   // Find the part that is NOT our company
@@ -95,7 +95,7 @@ export function parseMeetingTitle(title: string): string | null {
     // Fallback: strip trailing descriptors
     const companyName = cleaned
       .replace(/\s*[-–—].*$/, "")
-      .replace(/\s+(focused|intro|demo|sync|meeting|call|kickoff).*$/i, "")
+      .replace(/\s+(focused|intro|demo|sync|meeting|call|kickoff|weekly|standup|biweekly|monthly|catchup|check-in).*$/i, "")
       .replace(/\s*\(.*\)$/, "")
       .trim();
     if (companyName.length > 0) return companyName;
