@@ -74,12 +74,22 @@ A call qualifies for Stage 1 (qualified opportunity) when minimum BANT criteria 
 - Authority score >= 3 (champion or decision maker identified)
 - Timing score >= 2 (some timeline awareness)
 
-Stage 1 probability should reflect confidence that this deal will progress:
+Stage 1 probability should reflect confidence that this deal will progress.
+
+### Mid-tier probability ranges
 - 0-20%: Missing most BANT criteria, unlikely to progress
 - 21-40%: Some signals but major gaps remain
 - 41-60%: Decent discovery, a few unknowns to resolve
 - 61-80%: Strong BANT, clear path forward
 - 81-100%: Exceptional discovery, all criteria met with conviction
+
+### Enterprise probability ranges
+For enterprise deals, probability must be computed against the ENTERPRISE thresholds above — NOT the mid-tier ones. A Budget score of 1 is EXPECTED and normal for enterprise Stage 0 and must NOT reduce the probability. Evaluate probability based primarily on Need, Timing, and Authority:
+- 0-20%: Need or Authority clearly missing (score <= 2)
+- 21-40%: Need or Authority weak, no clear path to next steps
+- 41-60%: Need identified but Authority or Timing uncertain
+- 61-80%: Strong Need + Authority champion identified + follow-up planned — this is a GOOD enterprise Stage 0 outcome
+- 81-100%: Decision maker engaged, urgent need, timeline committed
 
 ## Output Format
 
@@ -103,17 +113,20 @@ Return a JSON object with this exact structure:
 
 ## Decision Logic
 
-### Mid-tier (default)
-- If Need >= 3 AND Authority >= 3 AND Timing >= 2 AND Budget >= 2 → "Qualified"
-- If at least two dimensions >= 3 → "Needs Work"
-- Otherwise → "Unqualified"
-- Score (0-100): sum of all four BANT scores mapped equally (each dimension contributes up to 25 points: score_dimension * 5)
+CRITICAL: You MUST check the Deal segment field and apply the correct logic below. Do NOT mix mid-tier and enterprise rules.
 
-### Enterprise
-- If Need >= 3 AND Authority >= 3 AND Timing >= 2 AND Budget >= 1 → "Qualified"
-- If at least two dimensions >= 3 → "Needs Work"
-- Otherwise → "Unqualified"
-- Score (0-100): weighted formula — (budget * 2 + authority * 4 + need * 8 + timing * 6) (max 100)
+### Mid-tier (default — when Deal segment = mid_tier)
+- If Need >= 3 AND Authority >= 3 AND Timing >= 2 AND Budget >= 2 → overall_status = "Qualified"
+- If at least two dimensions >= 3 → overall_status = "Needs Work"
+- Otherwise → overall_status = "Unqualified"
+- score (0-100): sum of all four BANT scores mapped equally (each dimension contributes up to 25 points: score_dimension * 5)
+
+### Enterprise (when Deal segment = enterprise)
+- If Need >= 3 AND Authority >= 3 AND Timing >= 2 AND Budget >= 1 → overall_status = "Qualified"
+- If at least two dimensions >= 3 → overall_status = "Needs Work"
+- Otherwise → overall_status = "Unqualified"
+- score (0-100): weighted formula — (budget * 2 + authority * 4 + need * 8 + timing * 6) (max 100)
+- IMPORTANT: Budget = 1 MEETS the enterprise threshold. Do NOT downgrade overall_status or stage_1_probability because budget was not discussed — this is expected behavior for enterprise Stage 0.
 
 IMPORTANT:
 - Return ONLY valid JSON, no markdown formatting.
