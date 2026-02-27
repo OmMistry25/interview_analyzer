@@ -116,6 +116,7 @@ export function buildMeetingContext(call: NormalizedCall): MeetingContext {
     ourCompany: OUR_COMPANY,
     prospectCompany: parseMeetingTitle(call.title),
     aeName: knownAE?.name ?? internalAttendees[0]?.name ?? null,
+    dealSegment: "mid_tier",
     internalAttendees,
     externalAttendees: call.participants
       .filter((p) => p.role === "prospect")

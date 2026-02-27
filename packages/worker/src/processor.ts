@@ -4,6 +4,7 @@ import { mapFathomToNormalized, buildMeetingContext, parseMeetingTitle, KNOWN_AE
 import { extractSignals } from "@transcript-evaluator/core/src/extraction/extractor";
 import { evaluateSignals } from "@transcript-evaluator/core/src/evaluation/evaluator";
 import { crossCheckEvaluation } from "@transcript-evaluator/core/src/evaluation/rulesEngine";
+import { lookupCompanySize } from "@transcript-evaluator/core/src/enrichment/apollo";
 import { formatGrowthTeamDigest, formatAESlackMessage } from "@transcript-evaluator/core/src/formatting/slackPayload";
 import type { EvaluationResult } from "@transcript-evaluator/core/src/evaluation/schemas";
 import type { ExtractedSignals } from "@transcript-evaluator/core/src/extraction/schemas";
@@ -82,6 +83,11 @@ async function processFathomMeeting(
 
   try {
     const meetingCtx = buildMeetingContext(normalized);
+
+    const enrichment = await lookupCompanySize(meetingCtx.prospectCompany);
+    meetingCtx.dealSegment = enrichment.segment;
+    console.log(`  Deal segment: ${enrichment.segment} (employees: ${enrichment.employeeCount ?? "unknown"})`);
+
     console.log(`  Extracting signals... (prospect: ${meetingCtx.prospectCompany ?? "unknown"})`);
     const signals = await extractSignals(normalized.utterances, meetingCtx);
     console.log("  Signals extracted.");
@@ -96,7 +102,7 @@ async function processFathomMeeting(
     const evaluation = await evaluateSignals(signals, meetingCtx);
     console.log(`  Evaluation: ${evaluation.overall_status} (score: ${evaluation.score}, stage1: ${evaluation.stage_1_probability}%)`);
 
-    const crossCheck = crossCheckEvaluation(signals, evaluation);
+    const crossCheck = crossCheckEvaluation(signals, evaluation, meetingCtx.dealSegment);
     if (crossCheck.mismatch) {
       console.log(`  MISMATCH: ${crossCheck.mismatch}`);
       evaluation.overall_status = crossCheck.status;
@@ -210,16 +216,21 @@ async function reprocessCall(
     KNOWN_AES.some((ae: string) => a.name.toLowerCase().includes(ae.toLowerCase()))
   );
 
+  const prospectCompany = parseMeetingTitle(call.title as string);
+  const enrichment = await lookupCompanySize(prospectCompany);
+
   const meetingCtx = {
     meetingTitle: call.title as string,
     ourCompany: "Console",
-    prospectCompany: parseMeetingTitle(call.title as string),
+    prospectCompany,
     aeName: knownAE?.name ?? internalAttendees[0]?.name ?? null,
+    dealSegment: enrichment.segment,
     internalAttendees,
     externalAttendees: (participants ?? [])
       .filter((p) => p.role === "prospect")
       .map((p) => ({ name: p.name as string, email: (p.email as string) ?? null })),
   };
+  console.log(`  Deal segment: ${enrichment.segment} (employees: ${enrichment.employeeCount ?? "unknown"})`);
 
   const run = await createProcessingRun(db, {
     callId,
@@ -247,7 +258,7 @@ async function reprocessCall(
     const evaluation = await evaluateSignals(signals, meetingCtx);
     console.log(`  Evaluation: ${evaluation.overall_status} (score: ${evaluation.score}, stage1: ${evaluation.stage_1_probability}%)`);
 
-    const crossCheck = crossCheckEvaluation(signals, evaluation);
+    const crossCheck = crossCheckEvaluation(signals, evaluation, meetingCtx.dealSegment);
     if (crossCheck.mismatch) {
       console.log(`  MISMATCH: ${crossCheck.mismatch}`);
       evaluation.overall_status = crossCheck.status;

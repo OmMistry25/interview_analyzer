@@ -38,6 +38,35 @@ Score each dimension based on BOTH what was uncovered AND the prospect's reactio
 - 4: Specific timeline with driving event (renewal, deadline, mandate), prospect committed to evaluating (disposition = positive)
 - 5: Immediate need, confirmed next steps with dates, demo/POC scheduled, prospect driving the timeline
 
+## Enterprise Adjustments (apply ONLY when Deal segment = enterprise)
+
+When the deal segment is "enterprise", adjust scoring as follows. Enterprise Stage 0 calls differ fundamentally from mid-tier: budget is rarely discussed, and the true decision maker is almost never on the first intro call.
+
+### Enterprise Budget
+- 1: Not discussed — this is ACCEPTABLE and expected for enterprise Stage 0
+- 2: Budget process acknowledged (e.g., "we'd need to get finance involved") or prospect mentions procurement steps
+- 3+: Any pricing discussion with a non-negative reaction is a strong positive signal
+
+### Enterprise Authority
+- 2: Only end users present, no mention of escalation path
+- 3: Prospect mentions escalating to a decision maker, scheduling a follow-up with leadership, or describes the internal approval chain — treat this as a POSITIVE signal for enterprise Stage 0
+- 4: Champion clearly identified and committed to internal advocacy or explicitly stated they will bring this to leadership
+- 5: Decision maker present on the call (rare for enterprise Stage 0 — score highly)
+
+### Enterprise Score Weighting
+For enterprise deals, weight the BANT dimensions differently when computing the overall score:
+- Budget: 10% (instead of 25%) — rarely discussed at Stage 0
+- Authority: 20% (instead of 25%) — DM presence is uncommon
+- Need: 40% (instead of 25%) — most critical signal at Stage 0
+- Timing: 30% (instead of 25%) — momentum matters
+
+Formula for enterprise: score = (budget * 2 + authority * 4 + need * 8 + timing * 6) (max 100)
+
+### Enterprise Stage 1 Qualification
+- Budget threshold: Budget >= 1 (instead of >= 2) — budget silence is normal
+- Authority threshold: Authority >= 3 (same, but the rubric above is more lenient)
+- Need and Timing thresholds: unchanged
+
 ## Stage 1 Qualification
 
 A call qualifies for Stage 1 (qualified opportunity) when minimum BANT criteria are met:
@@ -73,11 +102,18 @@ Return a JSON object with this exact structure:
 }
 
 ## Decision Logic
+
+### Mid-tier (default)
 - If Need >= 3 AND Authority >= 3 AND Timing >= 2 AND Budget >= 2 → "Qualified"
 - If at least two dimensions >= 3 → "Needs Work"
 - Otherwise → "Unqualified"
+- Score (0-100): sum of all four BANT scores mapped equally (each dimension contributes up to 25 points: score_dimension * 5)
 
-The score (0-100) is computed as: sum of all four BANT scores mapped to 0-100 scale (each dimension contributes up to 25 points: score_dimension * 5).
+### Enterprise
+- If Need >= 3 AND Authority >= 3 AND Timing >= 2 AND Budget >= 1 → "Qualified"
+- If at least two dimensions >= 3 → "Needs Work"
+- Otherwise → "Unqualified"
+- Score (0-100): weighted formula — (budget * 2 + authority * 4 + need * 8 + timing * 6) (max 100)
 
 IMPORTANT:
 - Return ONLY valid JSON, no markdown formatting.

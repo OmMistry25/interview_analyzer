@@ -31,6 +31,7 @@ export interface MeetingContext {
   ourCompany: string;
   prospectCompany: string | null;
   aeName: string | null;
+  dealSegment: "enterprise" | "mid_tier";
   internalAttendees: { name: string; email: string | null }[];
   externalAttendees: { name: string; email: string | null }[];
 }
