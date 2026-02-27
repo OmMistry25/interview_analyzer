@@ -16,6 +16,12 @@ export default function DashboardLayout({
             </svg>
             Calls
           </Link>
+          <Link href="/dashboard/geo-analysis" className="sidebar-link">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14 8H10L8.5 13L5.5 3L4 8H2" />
+            </svg>
+            GEO Analysis
+          </Link>
         </nav>
       </aside>
       <main className="main-content">

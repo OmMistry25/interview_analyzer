@@ -6,6 +6,7 @@ import { evaluateSignals } from "@transcript-evaluator/core/src/evaluation/evalu
 import { crossCheckEvaluation } from "@transcript-evaluator/core/src/evaluation/rulesEngine";
 import { lookupCompanySize } from "@transcript-evaluator/core/src/enrichment/apollo";
 import { formatGrowthTeamDigest, formatAESlackMessage } from "@transcript-evaluator/core/src/formatting/slackPayload";
+import { runDailyExtraction, runBackfill, runWeeklyAnalysis } from "@transcript-evaluator/core/src/analysis/geoAnalysisPipeline";
 import type { EvaluationResult } from "@transcript-evaluator/core/src/evaluation/schemas";
 import type { ExtractedSignals } from "@transcript-evaluator/core/src/extraction/schemas";
 import {
@@ -32,6 +33,14 @@ export async function processJob(
 
     case "REPROCESS_CALL":
       await reprocessCall(db, job.payload);
+      break;
+
+    case "EXTRACT_GEO_PHRASES":
+      await processGeoExtraction(db, job.payload);
+      break;
+
+    case "RUN_GEO_WEEKLY_ANALYSIS":
+      await processGeoWeeklyAnalysis(db);
       break;
 
     default:
@@ -166,6 +175,34 @@ async function fireCallback(
   } catch (err) {
     console.error(`  Callback POST failed:`, err);
   }
+}
+
+async function processGeoExtraction(
+  db: SupabaseClient,
+  payload: Record<string, unknown>
+): Promise<void> {
+  const pipelineId = payload.hubspot_pipeline_id as string;
+  const stageId = payload.hubspot_stage_id as string;
+  const isBackfill = payload.backfill === true;
+
+  if (!pipelineId || !stageId) {
+    throw new Error("Missing hubspot_pipeline_id or hubspot_stage_id in job payload");
+  }
+
+  const config = { hubspotPipelineId: pipelineId, hubspotStageId: stageId };
+
+  if (isBackfill) {
+    const result = await runBackfill(db, config);
+    console.log(`  GEO backfill complete: ${result.callsProcessed} calls processed (run: ${result.runId})`);
+  } else {
+    const result = await runDailyExtraction(db, config);
+    console.log(`  GEO daily extraction complete: ${result.callsProcessed} calls processed (run: ${result.runId})`);
+  }
+}
+
+async function processGeoWeeklyAnalysis(db: SupabaseClient): Promise<void> {
+  const result = await runWeeklyAnalysis(db);
+  console.log(`  GEO weekly analysis complete: ${result.uniquePhrases} unique phrases (run: ${result.runId})`);
 }
 
 async function reprocessCall(
