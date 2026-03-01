@@ -132,6 +132,47 @@ export async function runBackfill(
   }
 }
 
+// ── Qualified-only extraction (skips HubSpot, uses evaluation status) ────
+
+export async function runQualifiedExtraction(
+  db: SupabaseClient
+): Promise<{ runId: string; callsProcessed: number }> {
+  const run = await createGeoAnalysisRun(db, "backfill", { filter: "qualified_only" });
+
+  try {
+    // Get all call IDs with a "Qualified" evaluation
+    const { data: evals } = await db
+      .from("evaluations")
+      .select("call_id")
+      .eq("overall_status", "Qualified");
+
+    const qualifiedCallIds = [...new Set((evals ?? []).map((e) => e.call_id as string))];
+    console.log(`  [GEO Qualified] Found ${qualifiedCallIds.length} qualified calls`);
+
+    const unprocessedCallIds = await filterUnprocessedCalls(db, qualifiedCallIds);
+    console.log(`  [GEO Qualified] ${unprocessedCallIds.length} need phrase extraction`);
+
+    let processed = 0;
+    for (const callId of unprocessedCallIds) {
+      try {
+        await extractPhrasesForCall(db, run.id, callId);
+        processed++;
+        console.log(`  [GEO Qualified] Processed ${processed}/${unprocessedCallIds.length}`);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`  [GEO Qualified] Failed call ${callId}: ${msg}`);
+      }
+    }
+
+    await markGeoRunSucceeded(db, run.id, processed);
+    return { runId: run.id, callsProcessed: processed };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    await markGeoRunFailed(db, run.id, msg);
+    throw err;
+  }
+}
+
 async function filterUnprocessedCalls(
   db: SupabaseClient,
   callIds: string[]

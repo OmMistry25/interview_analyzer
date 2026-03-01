@@ -523,6 +523,37 @@ h3 {
   color: var(--text-tertiary);
 }
 
+/* ---- Calls Filters ---- */
+
+.calls-filters {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.calls-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.calls-filter-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin-left: 8px;
+}
+
+.calls-filter-date {
+  width: 140px;
+  padding: 5px 8px;
+  font-size: 12px;
+}
+
 /* ---- GEO Analysis ---- */
 
 .geo-stats-grid {

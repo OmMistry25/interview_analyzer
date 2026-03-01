@@ -30,6 +30,7 @@ interface Props {
   initialPhrases: PhraseRow[];
   initialRuns: RunRow[];
   totalCallsAnalyzed: number;
+  totalUniquePhrases: number;
   latestRunId: string | null;
 }
 
@@ -60,6 +61,7 @@ export default function GeoAnalysisDashboard({
   initialPhrases,
   initialRuns,
   totalCallsAnalyzed,
+  totalUniquePhrases,
   latestRunId,
 }: Props) {
   const [phrases] = useState(initialPhrases);
@@ -74,7 +76,6 @@ export default function GeoAnalysisDashboard({
     ? phrases.filter((p) => p.category === selectedCategory)
     : phrases;
 
-  const uniquePhrases = phrases.length;
   const categoryCounts = phrases.reduce<Record<string, number>>((acc, p) => {
     acc[p.category] = (acc[p.category] ?? 0) + 1;
     return acc;
@@ -116,7 +117,7 @@ export default function GeoAnalysisDashboard({
           <div className="geo-stat-label">Calls Analyzed</div>
         </div>
         <div className="card geo-stat-card">
-          <div className="geo-stat-value">{uniquePhrases}</div>
+          <div className="geo-stat-value">{totalUniquePhrases}</div>
           <div className="geo-stat-label">Unique Phrases</div>
         </div>
         <div className="card geo-stat-card">

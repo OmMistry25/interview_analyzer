@@ -1,6 +1,7 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import ImportMeetingForm from "@/components/ImportMeetingForm";
+import CallsFilters from "./CallsFilters";
 
 export const dynamic = "force-dynamic";
 
@@ -17,14 +18,45 @@ interface CallRow {
   }[];
 }
 
-export default async function CallsListPage() {
+interface Props {
+  searchParams: Promise<{ [key: string]: string | undefined }>;
+}
+
+export default async function CallsListPage({ searchParams }: Props) {
+  const params = await searchParams;
+  const statusFilter = params.status ?? "";
+  const dateFrom = params.from ?? "";
+  const dateTo = params.to ?? "";
+
   const supabase = await createSupabaseServerClient();
 
-  const { data: calls, error } = await supabase
+  const isEvalStatus = ["Qualified", "Needs Work", "Unqualified"].includes(statusFilter);
+
+  const selectCols = "id, title, start_time, source";
+  const evalCols = "overall_status, score, stage_1_probability, created_at";
+  const selectStr = isEvalStatus
+    ? `${selectCols}, evaluations!inner(${evalCols})`
+    : `${selectCols}, evaluations(${evalCols})`;
+
+  let query = supabase
     .from("calls")
-    .select("id, title, start_time, source, evaluations(overall_status, score, stage_1_probability, created_at)")
+    .select(selectStr)
     .order("created_at", { ascending: false })
-    .limit(50);
+    .limit(500);
+
+  if (isEvalStatus) {
+    query = query.eq("evaluations.overall_status", statusFilter);
+  }
+  if (dateFrom) {
+    query = query.gte("start_time", new Date(dateFrom).toISOString());
+  }
+  if (dateTo) {
+    const to = new Date(dateTo);
+    to.setDate(to.getDate() + 1);
+    query = query.lt("start_time", to.toISOString());
+  }
+
+  const { data: calls, error } = await query;
 
   if (error) {
     return (
@@ -34,15 +66,26 @@ export default async function CallsListPage() {
     );
   }
 
-  const typedCalls = (calls ?? []) as CallRow[];
+  let typedCalls = (calls ?? []) as CallRow[];
+
+  if (statusFilter === "Pending") {
+    typedCalls = typedCalls.filter((c) => !c.evaluations || c.evaluations.length === 0);
+  }
 
   return (
     <div className="page-container">
       <div className="page-header">
         <h1>Calls</h1>
+        <p className="page-meta">{typedCalls.length} calls</p>
       </div>
 
       <ImportMeetingForm />
+
+      <CallsFilters
+        currentStatus={statusFilter}
+        currentFrom={dateFrom}
+        currentTo={dateTo}
+      />
 
       <table className="table">
         <thead>
@@ -85,7 +128,7 @@ export default async function CallsListPage() {
           {typedCalls.length === 0 && (
             <tr>
               <td colSpan={4} className="table-empty">
-                No calls yet. Import a Fathom meeting link above.
+                No calls match the current filters.
               </td>
             </tr>
           )}

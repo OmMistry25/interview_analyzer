@@ -42,14 +42,21 @@ export default async function GeoAnalysisPage() {
 
   // Fetch phrase statistics if a run exists
   let phrases: PhraseRow[] = [];
+  let totalUniquePhrases = 0;
   if (latestRun) {
     const { data } = await supabase
       .from("phrase_statistics")
       .select("*")
       .eq("run_id", latestRun.id)
       .order("cumulative_frequency", { ascending: false })
-      .limit(200);
+      .limit(500);
     phrases = (data ?? []) as PhraseRow[];
+
+    const { count } = await supabase
+      .from("phrase_statistics")
+      .select("id", { count: "exact", head: true })
+      .eq("run_id", latestRun.id);
+    totalUniquePhrases = count ?? phrases.length;
   }
 
   // Fetch recent runs
@@ -79,6 +86,7 @@ export default async function GeoAnalysisPage() {
         initialPhrases={phrases}
         initialRuns={runs}
         totalCallsAnalyzed={totalExtractions ?? 0}
+        totalUniquePhrases={totalUniquePhrases}
         latestRunId={latestRun?.id ?? null}
       />
     </div>
