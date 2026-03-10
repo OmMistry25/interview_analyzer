@@ -2,6 +2,23 @@ import { NextRequest, NextResponse } from "next/server";
 import { parseMeetingTitle, KNOWN_AES } from "@transcript-evaluator/core/src/ingestion/mapping";
 import { authenticatePipeline } from "../_auth";
 
+const GENERIC_DOMAINS = new Set([
+  "gmail.com", "yahoo.com", "hotmail.com", "outlook.com",
+  "aol.com", "icloud.com", "protonmail.com", "mail.com",
+  "live.com", "msn.com", "ymail.com",
+]);
+
+function extractExternalDomain(
+  invitees: { email?: string; is_external?: boolean }[]
+): string | null {
+  for (const inv of invitees) {
+    if (!inv.is_external || !inv.email) continue;
+    const domain = inv.email.split("@")[1]?.toLowerCase();
+    if (domain && !GENERIC_DOMAINS.has(domain)) return domain;
+  }
+  return null;
+}
+
 export async function POST(req: NextRequest) {
   const authErr = authenticatePipeline(req);
   if (authErr) return authErr;
@@ -22,11 +39,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const companyName = parseMeetingTitle(title);
+  const companyDomain = extractExternalDomain(invitees);
 
-  // "Fannie Mae" → "fanniemae.com", "HubSpot" → "hubspot.com"
-  const companyDomainGuess = companyName
-    ? companyName.toLowerCase().replace(/[^a-z0-9]/g, "") + ".com"
+  const companyNameFromTitle = parseMeetingTitle(title);
+  const companyDomainGuess = companyNameFromTitle
+    ? companyNameFromTitle.toLowerCase().replace(/[^a-z0-9]/g, "") + ".com"
     : null;
 
   const allNames: string[] = [];
@@ -49,7 +66,8 @@ export async function POST(req: NextRequest) {
   }));
 
   return NextResponse.json({
-    company_name: companyName,
+    company_domain: companyDomain,
+    company_name: companyNameFromTitle,
     company_domain_guess: companyDomainGuess,
     ae_name: aeName,
     recording_id: recordingId,

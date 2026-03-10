@@ -10,6 +10,7 @@ interface CallRow {
   title: string;
   start_time: string | null;
   source: string;
+  dq_reason: string | null;
   evaluations: {
     overall_status: string;
     score: number;
@@ -27,12 +28,14 @@ export default async function CallsListPage({ searchParams }: Props) {
   const statusFilter = params.status ?? "";
   const dateFrom = params.from ?? "";
   const dateTo = params.to ?? "";
+  const search = params.search ?? "";
 
   const supabase = await createSupabaseServerClient();
 
+  const isDQ = statusFilter === "DQ";
   const isEvalStatus = ["Qualified", "Needs Work", "Unqualified"].includes(statusFilter);
 
-  const selectCols = "id, title, start_time, source";
+  const selectCols = "id, title, start_time, source, dq_reason";
   const evalCols = "overall_status, score, stage_1_probability, created_at";
   const selectStr = isEvalStatus
     ? `${selectCols}, evaluations!inner(${evalCols})`
@@ -55,6 +58,9 @@ export default async function CallsListPage({ searchParams }: Props) {
     to.setDate(to.getDate() + 1);
     query = query.lt("start_time", to.toISOString());
   }
+  if (search) {
+    query = query.ilike("title", `%${search}%`);
+  }
 
   const { data: calls, error } = await query;
 
@@ -69,8 +75,21 @@ export default async function CallsListPage({ searchParams }: Props) {
   let typedCalls = (calls ?? []) as CallRow[];
 
   if (statusFilter === "Pending") {
-    typedCalls = typedCalls.filter((c) => !c.evaluations || c.evaluations.length === 0);
+    typedCalls = typedCalls.filter((c) => !c.dq_reason && (!c.evaluations || c.evaluations.length === 0));
   }
+  if (isDQ) {
+    typedCalls = typedCalls.filter((c) => !!c.dq_reason);
+  }
+
+  typedCalls.sort((a, b) => {
+    const latestEvalA = a.evaluations?.length
+      ? Math.max(...a.evaluations.map((e) => new Date(e.created_at).getTime()))
+      : 0;
+    const latestEvalB = b.evaluations?.length
+      ? Math.max(...b.evaluations.map((e) => new Date(e.created_at).getTime()))
+      : 0;
+    return latestEvalB - latestEvalA;
+  });
 
   return (
     <div className="page-container">
@@ -85,6 +104,7 @@ export default async function CallsListPage({ searchParams }: Props) {
         currentStatus={statusFilter}
         currentFrom={dateFrom}
         currentTo={dateTo}
+        currentSearch={search}
       />
 
       <table className="table">
@@ -113,10 +133,16 @@ export default async function CallsListPage({ searchParams }: Props) {
                   {call.start_time ? new Date(call.start_time).toLocaleDateString() : "—"}
                 </td>
                 <td>
-                  <StatusBadge status={eval_?.overall_status} />
+                  {call.dq_reason ? (
+                    <span className="badge badge-gray">DQ</span>
+                  ) : (
+                    <StatusBadge status={eval_?.overall_status} />
+                  )}
                 </td>
                 <td>
-                  {eval_?.stage_1_probability != null ? (
+                  {call.dq_reason ? (
+                    <span style={{ color: "var(--text-tertiary)", fontSize: "var(--font-xs)" }}>{call.dq_reason}</span>
+                  ) : eval_?.stage_1_probability != null ? (
                     <ProbabilityBadge value={eval_.stage_1_probability} />
                   ) : (
                     <span style={{ color: "var(--text-tertiary)" }}>—</span>

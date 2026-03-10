@@ -8,6 +8,7 @@ const STATUSES = [
   { value: "Qualified", label: "Qualified" },
   { value: "Needs Work", label: "Needs Work" },
   { value: "Unqualified", label: "Unqualified" },
+  { value: "DQ", label: "DQ" },
   { value: "Pending", label: "Pending" },
 ];
 
@@ -15,9 +16,10 @@ interface Props {
   currentStatus: string;
   currentFrom: string;
   currentTo: string;
+  currentSearch: string;
 }
 
-export default function CallsFilters({ currentStatus, currentFrom, currentTo }: Props) {
+export default function CallsFilters({ currentStatus, currentFrom, currentTo, currentSearch }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -38,10 +40,21 @@ export default function CallsFilters({ currentStatus, currentFrom, currentTo }: 
     router.push("/dashboard/calls");
   }, [router]);
 
-  const hasFilters = currentStatus || currentFrom || currentTo;
+  const hasFilters = currentStatus || currentFrom || currentTo || currentSearch;
 
   return (
     <div className="calls-filters">
+      <input
+        type="text"
+        className="input"
+        placeholder="Search by title…"
+        defaultValue={currentSearch}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") updateFilter("search", e.currentTarget.value);
+        }}
+        onBlur={(e) => updateFilter("search", e.currentTarget.value)}
+      />
+
       <div className="calls-filter-group">
         {STATUSES.map((s) => (
           <button

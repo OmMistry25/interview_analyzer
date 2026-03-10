@@ -35,6 +35,10 @@ export async function processJob(
       await reprocessCall(db, job.payload);
       break;
 
+    case "MARK_DQ":
+      await markCallDQ(db, job.payload);
+      break;
+
     case "EXTRACT_GEO_PHRASES":
       await processGeoExtraction(db, job.payload);
       break;
@@ -203,6 +207,49 @@ async function processGeoExtraction(
 async function processGeoWeeklyAnalysis(db: SupabaseClient): Promise<void> {
   const result = await runWeeklyAnalysis(db);
   console.log(`  GEO weekly analysis complete: ${result.uniquePhrases} unique phrases (run: ${result.runId})`);
+}
+
+async function markCallDQ(
+  db: SupabaseClient,
+  payload: Record<string, unknown>
+): Promise<void> {
+  const recordingId = payload.recording_id as string;
+  const title = (payload.title as string) || "Unknown";
+  const reason = (payload.reason as string) || "Not Stage 0";
+
+  if (!recordingId) throw new Error("Missing recording_id in MARK_DQ payload");
+
+  const { data: existing } = await db
+    .from("calls")
+    .select("id")
+    .eq("source_recording_id", recordingId)
+    .maybeSingle();
+
+  let callId: string;
+  if (existing) {
+    callId = existing.id;
+  } else {
+    const { data: inserted, error } = await db
+      .from("calls")
+      .insert({
+        source: "fathom",
+        source_recording_id: recordingId,
+        title,
+        start_time: new Date().toISOString(),
+      })
+      .select("id")
+      .single();
+    if (error) throw error;
+    callId = inserted.id;
+  }
+
+  const { error } = await db
+    .from("calls")
+    .update({ dq_reason: reason })
+    .eq("id", callId);
+  if (error) throw error;
+
+  console.log(`  Marked call ${callId} ("${title}") as DQ: ${reason}`);
 }
 
 async function reprocessCall(
