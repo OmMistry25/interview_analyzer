@@ -10,11 +10,15 @@ const GENERIC_DOMAINS = new Set([
 
 const OUR_DOMAIN = "console.com";
 
+function isOurDomain(domain: string): boolean {
+  return domain === OUR_DOMAIN;
+}
+
 function domainFromEmail(email: string): string | null {
   const domain = email.split("@")[1]?.toLowerCase().trim();
   if (!domain) return null;
   if (GENERIC_DOMAINS.has(domain)) return null;
-  if (domain === OUR_DOMAIN) return null;
+  if (isOurDomain(domain)) return null;
   return domain;
 }
 
@@ -85,9 +89,23 @@ export async function POST(req: NextRequest) {
       KNOWN_AES.some((ae) => n.toLowerCase().includes(ae.toLowerCase()))
     ) ?? null;
 
-  if (!aeName && recorderEmail) {
-    const local = recorderEmail.split("@")[0]?.toLowerCase() ?? "";
-    aeName = KNOWN_AES.find((ae) => local.includes(ae.toLowerCase())) ?? null;
+  if (!aeName) {
+    const consoleEmails: string[] = [];
+    if (recorderEmail) consoleEmails.push(recorderEmail);
+    if (flatEmails) {
+      for (const e of flatEmails.split(",").map((s) => s.trim()).filter(Boolean)) {
+        const d = e.split("@")[1]?.toLowerCase();
+        if (d && isOurDomain(d)) consoleEmails.push(e);
+      }
+    }
+    for (const email of consoleEmails) {
+      const local = email.split("@")[0]?.toLowerCase() ?? "";
+      const match = KNOWN_AES.find((ae) => {
+        const firstName = ae.split(" ")[0].toLowerCase();
+        return local === firstName || local.includes(firstName);
+      });
+      if (match) { aeName = match; break; }
+    }
   }
 
   const participants = invitees.map((inv) => ({
