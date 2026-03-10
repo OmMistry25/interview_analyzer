@@ -8,13 +8,32 @@ const GENERIC_DOMAINS = new Set([
   "live.com", "msn.com", "ymail.com",
 ]);
 
+const OUR_DOMAIN = "console.com";
+
+function domainFromEmail(email: string): string | null {
+  const domain = email.split("@")[1]?.toLowerCase().trim();
+  if (!domain) return null;
+  if (GENERIC_DOMAINS.has(domain)) return null;
+  if (domain === OUR_DOMAIN) return null;
+  return domain;
+}
+
 function extractExternalDomain(
   invitees: { email?: string; is_external?: boolean }[]
 ): string | null {
   for (const inv of invitees) {
     if (!inv.is_external || !inv.email) continue;
-    const domain = inv.email.split("@")[1]?.toLowerCase();
-    if (domain && !GENERIC_DOMAINS.has(domain)) return domain;
+    const d = domainFromEmail(inv.email);
+    if (d) return d;
+  }
+  return null;
+}
+
+function extractDomainFromEmailList(csv: string): string | null {
+  const emails = csv.split(",").map((e) => e.trim()).filter(Boolean);
+  for (const email of emails) {
+    const d = domainFromEmail(email);
+    if (d) return d;
   }
   return null;
 }
@@ -27,10 +46,14 @@ export async function POST(req: NextRequest) {
 
   const title: string = body.title ?? "";
   const recordingId = body.recording_id;
+
   const invitees: { name?: string; email?: string; is_external?: boolean }[] =
     body.calendar_invitees ?? [];
   const recordedBy: { name?: string; email?: string } | undefined =
     body.recorded_by;
+
+  const flatEmails: string = body.invitees_emails ?? "";
+  const recorderEmail: string = body.recorder_email ?? "";
 
   if (!title || recordingId == null) {
     return NextResponse.json(
@@ -39,7 +62,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const companyDomain = extractExternalDomain(invitees);
+  let companyDomain = extractExternalDomain(invitees);
+  if (!companyDomain && flatEmails) {
+    companyDomain = extractDomainFromEmailList(flatEmails);
+  }
 
   const companyNameFromTitle = parseMeetingTitle(title);
   const companyDomainGuess = companyNameFromTitle
@@ -54,10 +80,15 @@ export async function POST(req: NextRequest) {
     allNames.push(recordedBy.name);
   }
 
-  const aeName =
+  let aeName =
     allNames.find((n) =>
       KNOWN_AES.some((ae) => n.toLowerCase().includes(ae.toLowerCase()))
     ) ?? null;
+
+  if (!aeName && recorderEmail) {
+    const local = recorderEmail.split("@")[0]?.toLowerCase() ?? "";
+    aeName = KNOWN_AES.find((ae) => local.includes(ae.toLowerCase())) ?? null;
+  }
 
   const participants = invitees.map((inv) => ({
     name: inv.name ?? "Unknown",
