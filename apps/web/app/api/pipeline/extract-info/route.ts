@@ -114,8 +114,13 @@ export async function POST(req: NextRequest) {
     is_external: inv.is_external ?? false,
   }));
 
+  const companySearchTerm = companyDomain
+    ? companyDomain.replace(/\.[^.]+$/, "")
+    : companyNameFromTitle ?? null;
+
   return NextResponse.json({
     company_domain: companyDomain,
+    company_search_term: companySearchTerm,
     company_name: companyNameFromTitle,
     company_domain_guess: companyDomainGuess,
     ae_name: aeName,
