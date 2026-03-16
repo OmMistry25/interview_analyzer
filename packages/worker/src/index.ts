@@ -14,24 +14,37 @@ async function main() {
   console.log("Worker starting (poll mode)...");
   const db = getServiceClient();
 
+  let consecutiveErrors = 0;
+
   while (true) {
-    const job = await claimJob(db);
-
-    if (!job) {
-      await sleep(POLL_INTERVAL_MS);
-      continue;
-    }
-
-    console.log(`Claimed job ${job.id} [${job.type}]`);
-
     try {
-      await processJob(db, job);
-      await markJobSucceeded(db, job.id);
-      console.log(`Job ${job.id} succeeded.`);
+      const job = await claimJob(db);
+
+      if (!job) {
+        consecutiveErrors = 0;
+        await sleep(POLL_INTERVAL_MS);
+        continue;
+      }
+
+      console.log(`Claimed job ${job.id} [${job.type}]`);
+
+      try {
+        await processJob(db, job);
+        await markJobSucceeded(db, job.id);
+        console.log(`Job ${job.id} succeeded.`);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        console.error(`Job ${job.id} failed: ${message}`);
+        await markJobFailed(db, job.id, MAX_ATTEMPTS);
+      }
+
+      consecutiveErrors = 0;
     } catch (err) {
+      consecutiveErrors++;
       const message = err instanceof Error ? err.message : String(err);
-      console.error(`Job ${job.id} failed: ${message}`);
-      await markJobFailed(db, job.id, MAX_ATTEMPTS);
+      const backoff = Math.min(POLL_INTERVAL_MS * consecutiveErrors, 60_000);
+      console.warn(`Poll error (${consecutiveErrors}): ${message.slice(0, 200)} — retrying in ${backoff / 1000}s`);
+      await sleep(backoff);
     }
   }
 }
