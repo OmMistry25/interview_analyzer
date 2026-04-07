@@ -17,6 +17,10 @@ interface EvaluationJson {
   stage_1_probability: number;
   stage_1_reasoning: string;
   overall_status: string;
+  s1_type?: string;
+  icp_fit?: string;
+  green_flags?: string[];
+  red_flags?: string[];
   call_notes: string;
   coaching_notes: string[];
   next_steps: string[];
@@ -32,12 +36,27 @@ interface BantGroupSignals {
   [key: string]: SignalField;
 }
 
+interface QualificationSignals {
+  demo_requested: boolean;
+  poc_mentioned: boolean;
+  nda_mentioned: boolean;
+  actively_evaluating_tools: boolean;
+  multiple_stakeholders_present: boolean;
+  competitor_bucket: string;
+  competitor_is_active_customer: boolean;
+}
+
 interface ExtractedSignals {
   budget: BantGroupSignals;
   authority: BantGroupSignals;
   need: BantGroupSignals;
   timing: BantGroupSignals;
-  account: BantGroupSignals;
+  account: BantGroupSignals & {
+    tech_stack?: Record<string, unknown>;
+    it_team_structure?: Record<string, unknown>;
+    icp_fit?: string;
+  };
+  qualification_signals?: QualificationSignals;
   participant_titles: { name: string; title: string; role_in_deal: string }[];
   call_summary: string;
 }
@@ -111,10 +130,20 @@ function AEView({
     <>
       {evaluation && (
         <section className="card">
-          <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 4 }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 4, flexWrap: "wrap" }}>
             <span className={`badge ${statusBadgeClass(evaluation.overall_status)}`} style={{ fontSize: 13 }}>
               {evaluation.overall_status}
             </span>
+            {evaluation.s1_type && evaluation.s1_type !== "not_s1" && (
+              <span className={`badge ${evaluation.s1_type === "sell_s1" ? "badge-green" : "badge-amber"}`} style={{ fontSize: 12 }}>
+                {evaluation.s1_type === "sell_s1" ? "Sell S1" : "Chase S1"}
+              </span>
+            )}
+            {evaluation.icp_fit && evaluation.icp_fit !== "unknown" && (
+              <span className={`badge ${icpFitBadgeClass(evaluation.icp_fit)}`} style={{ fontSize: 12 }}>
+                ICP: {evaluation.icp_fit.replace(/_/g, " ")}
+              </span>
+            )}
             <span style={{ fontSize: 14, color: "var(--text-secondary)" }}>
               Stage 1: <strong>{evaluation.stage_1_probability}%</strong>
             </span>
@@ -138,6 +167,31 @@ function AEView({
               );
             })}
           </div>
+
+          {(evaluation.green_flags?.length || evaluation.red_flags?.length) ? (
+            <div className="mt-20" style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+              {evaluation.green_flags && evaluation.green_flags.length > 0 && (
+                <div style={{ flex: "1 1 280px" }}>
+                  <h3 className="section-title">Green Flags</h3>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+                    {evaluation.green_flags.map((flag, i) => (
+                      <span key={i} className="badge badge-green" style={{ fontSize: 12, fontWeight: 400 }}>{flag}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {evaluation.red_flags && evaluation.red_flags.length > 0 && (
+                <div style={{ flex: "1 1 280px" }}>
+                  <h3 className="section-title">Red Flags</h3>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+                    {evaluation.red_flags.map((flag, i) => (
+                      <span key={i} className="badge badge-red" style={{ fontSize: 12, fontWeight: 400 }}>{flag}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : null}
 
           {evaluation.coaching_notes.length > 0 && (
             <div className="mt-20">
@@ -225,7 +279,30 @@ function GrowthView({
         <span className={`badge ${probBadgeClass(evaluation?.stage_1_probability ?? 0)}`} style={{ fontSize: 14, marginLeft: 4 }}>
           {evaluation?.stage_1_probability ?? "—"}%
         </span>
+        {evaluation?.s1_type && evaluation.s1_type !== "not_s1" && (
+          <span className={`badge ${evaluation.s1_type === "sell_s1" ? "badge-green" : "badge-amber"}`} style={{ fontSize: 12, marginLeft: 8 }}>
+            {evaluation.s1_type === "sell_s1" ? "Sell S1" : "Chase S1"}
+          </span>
+        )}
       </p>
+
+      {evaluation?.icp_fit && evaluation.icp_fit !== "unknown" && (
+        <DigestRow label="ICP Fit" value={evaluation.icp_fit.replace(/_/g, " ")} />
+      )}
+
+      {evaluation?.green_flags && evaluation.green_flags.length > 0 && (
+        <div className="digest-row">
+          <span className="digest-label">Green Flags: </span>
+          <span className="digest-value">{evaluation.green_flags.join(" · ")}</span>
+        </div>
+      )}
+
+      {evaluation?.red_flags && evaluation.red_flags.length > 0 && (
+        <div className="digest-row">
+          <span className="digest-label">Red Flags: </span>
+          <span className="digest-value">{evaluation.red_flags.join(" · ")}</span>
+        </div>
+      )}
     </section>
   );
 }
@@ -262,6 +339,12 @@ function statusBadgeClass(status: string): string {
 function probBadgeClass(value: number): string {
   if (value >= 61) return "badge-green";
   if (value >= 41) return "badge-amber";
+  return "badge-red";
+}
+
+function icpFitBadgeClass(fit: string): string {
+  if (fit === "strong_fit") return "badge-green";
+  if (fit === "moderate_fit") return "badge-amber";
   return "badge-red";
 }
 
@@ -340,6 +423,51 @@ function SignalsTable({ signals }: { signals: ExtractedSignals }) {
           </table>
         </div>
       ))}
+
+      {signals.account?.tech_stack && (
+        <div className="mb-16">
+          <h3 className="mb-8">Tech Stack</h3>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {Object.entries(signals.account.tech_stack).map(([key, val]) => (
+              <span
+                key={key}
+                className={`badge ${val === true ? "badge-green" : val === false ? "badge-gray" : "badge-amber"}`}
+                style={{ fontSize: 12, fontWeight: 400 }}
+              >
+                {key.replace(/_/g, " ")}{typeof val === "string" ? `: ${val}` : ""}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {signals.account?.icp_fit && signals.account.icp_fit !== "unknown" && (
+        <div className="mb-16">
+          <h3 className="mb-8">ICP Fit</h3>
+          <span className={`badge ${icpFitBadgeClass(signals.account.icp_fit)}`} style={{ fontSize: 13 }}>
+            {signals.account.icp_fit.replace(/_/g, " ")}
+          </span>
+        </div>
+      )}
+
+      {signals.qualification_signals && (
+        <div className="mb-16">
+          <h3 className="mb-8">Qualification Signals</h3>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {Object.entries(signals.qualification_signals)
+              .filter(([, val]) => typeof val === "boolean" || typeof val === "string")
+              .map(([key, val]) => (
+              <span
+                key={key}
+                className={`badge ${val === true ? "badge-green" : val === false ? "badge-gray" : "badge-amber"}`}
+                style={{ fontSize: 12, fontWeight: 400 }}
+              >
+                {key.replace(/_/g, " ")}{typeof val === "string" ? `: ${val}` : ""}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
       {signals.call_summary && (
         <div className="mt-16">

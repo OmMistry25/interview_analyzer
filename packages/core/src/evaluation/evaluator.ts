@@ -5,7 +5,7 @@ import { evaluationSchema, EvaluationResult } from "./schemas";
 import { ExtractedSignals } from "../extraction/schemas";
 import { MeetingContext } from "../types/normalized";
 
-const PROMPT_PATH = path.resolve(__dirname, "../prompts/evaluator_v2.txt");
+const PROMPT_PATH = path.resolve(__dirname, "../prompts/evaluator_v3.txt");
 
 export async function evaluateSignals(
   signals: ExtractedSignals,

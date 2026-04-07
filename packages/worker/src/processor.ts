@@ -86,8 +86,8 @@ async function processFathomMeeting(
   const run = await createProcessingRun(db, {
     callId: call.id,
     rubricVersion: "bant_v1",
-    extractorPromptVersion: "extract_v3",
-    evaluatorPromptVersion: "eval_v2",
+    extractorPromptVersion: "extract_v4",
+    evaluatorPromptVersion: "eval_v3",
     modelExtractor: "gpt-4o",
     modelEvaluator: "gpt-4o",
     transcriptHash: hash,
@@ -319,8 +319,8 @@ async function reprocessCall(
   const run = await createProcessingRun(db, {
     callId,
     rubricVersion: "bant_v1",
-    extractorPromptVersion: "extract_v3",
-    evaluatorPromptVersion: "eval_v2",
+    extractorPromptVersion: "extract_v4",
+    evaluatorPromptVersion: "eval_v3",
     modelExtractor: "gpt-4o",
     modelEvaluator: "gpt-4o",
     transcriptHash: hash,

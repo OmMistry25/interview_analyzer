@@ -58,13 +58,44 @@ const timingSchema = z.object({
   prospect_sentiment: prospectSentiment,
 });
 
+const techStackSchema = z.object({
+  slack: z.boolean(),
+  teams: z.boolean(),
+  okta: z.boolean(),
+  google_workspace: z.boolean(),
+  entra_ad: z.boolean(),
+  itsm_tool: z.string(),
+  mdm_tool: z.string(),
+  knowledge_base: z.string(),
+}).optional();
+
+const itTeamStructureSchema = z.object({
+  has_fulltime_it: z.boolean(),
+  uses_msp: z.boolean(),
+  team_size: z.union([z.string(), z.number()]),
+  ticket_volume: z.union([z.string(), z.number()]),
+}).optional();
+
 const accountSchema = z.object({
-  company_name: signalField, // Evidence optional — often derived from meeting title metadata
+  company_name: signalField,
   employee_count: signalFieldWithEvidence,
   identity_provider: signalFieldWithEvidence,
   scim_mentioned: signalFieldWithEvidence,
   competitors_mentioned: signalFieldWithEvidence,
+  tech_stack: techStackSchema,
+  it_team_structure: itTeamStructureSchema,
+  icp_fit: z.enum(["strong_fit", "moderate_fit", "poor_fit", "unknown"]).optional(),
 });
+
+const qualificationSignalsSchema = z.object({
+  demo_requested: z.boolean(),
+  poc_mentioned: z.boolean(),
+  nda_mentioned: z.boolean(),
+  actively_evaluating_tools: z.boolean(),
+  multiple_stakeholders_present: z.boolean(),
+  competitor_bucket: z.enum(["ai_native_itsm", "workflow_based", "automation_platform", "none", "unknown"]),
+  competitor_is_active_customer: z.boolean(),
+}).optional();
 
 const participantTitleSchema = z.object({
   name: z.string(),
@@ -78,6 +109,7 @@ export const extractedSignalsSchema = z.object({
   need: needSchema,
   timing: timingSchema,
   account: accountSchema,
+  qualification_signals: qualificationSignalsSchema,
   participant_titles: z.array(participantTitleSchema),
   call_summary: z.string(),
 });
