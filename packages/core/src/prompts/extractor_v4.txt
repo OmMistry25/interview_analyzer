@@ -72,6 +72,7 @@ Listen for mentions of the prospect's technology stack throughout the call. This
 Look for these specific signals that indicate deal progression:
 - **Demo requested**: Prospect asks for or agrees to a team-wide demo or deeper dive
 - **POC mentioned**: Any mention of proof of concept, pilot, trial, or testing
+- **POC confirmed**: Prospect actively agreed to a POC/pilot with a timeline or next steps to kick it off (e.g., "let's start the POC next week", "we'll scope the pilot on Wednesday"). This is STRONGER than poc_mentioned — it means both parties committed, not just discussed hypothetically.
 - **NDA mentioned**: Any mention of NDA, non-disclosure, or legal/security review
 - **Actively evaluating tools**: Prospect states they are evaluating multiple vendors or tools
 - **Multiple stakeholders present**: More than one person from the prospect side on the call (check attendees and who speaks)
@@ -151,6 +152,7 @@ Return a JSON object with this exact structure:
   "qualification_signals": {
     "demo_requested": <boolean>,
     "poc_mentioned": <boolean>,
+    "poc_confirmed": <boolean>,
     "nda_mentioned": <boolean>,
     "actively_evaluating_tools": <boolean>,
     "multiple_stakeholders_present": <boolean>,

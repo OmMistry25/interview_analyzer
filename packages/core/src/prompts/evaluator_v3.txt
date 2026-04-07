@@ -137,6 +137,23 @@ Classify the deal into one of three categories:
 - **"chase_s1"**: Potential fit but no confirmed buying cycle. Indicators: prospect has the right profile (ICP fit) and expressed interest, but no specific timeline, no demo commitment, AE would need to drive momentum. The call showed "Needs Work" — enough signal to pursue but not yet qualified.
 - **"not_s1"**: Does not meet Stage 1 criteria. Missing critical BANT signals, poor ICP fit, or prospect showed no real buying intent.
 
+## POC Override Rule (CRITICAL — apply BEFORE probability calculation)
+
+If the prospect has **confirmed or scheduled a POC** on this call — meaning they actively agreed to a proof of concept with a timeline, scope discussion, or next steps to kick it off — then the deal has ALREADY cleared Stage 1. Apply these overrides:
+
+- Set `stage_1_probability` to **95-100%**
+- Set `overall_status` to **"Qualified"**
+- Set `s1_type` to **"sell_s1"**
+- Add a green_flag: "POC confirmed/scheduled — deal is past Stage 1"
+
+This applies regardless of individual BANT scores. A POC commitment is a Stage 2 signal in the pipeline, which means Stage 1 qualification is already settled.
+
+How to distinguish POC confirmed vs. POC merely mentioned:
+- **POC confirmed**: "Let's start the POC next week", "We'll scope the POC on Wednesday", "Let's set up a pilot with one of our clients", "We're happy to set up a quick POC", prospect agrees to timeline and scope
+- **POC merely mentioned**: "We could maybe do a pilot someday", "POCs are something we do generally", hypothetical or future-tense without commitment — treat this as a green flag boost (+10-15%) but NOT an override
+
+Similarly, if the meeting title or context indicates this is a **POC scoping call, POC kickoff, security review, or contract discussion**, the deal is already past Stage 1. Apply the same overrides.
+
 ## Stage 1 Qualification
 
 A call qualifies for Stage 1 (Demo Completed & Sales Qualified) when minimum BANT criteria are met:

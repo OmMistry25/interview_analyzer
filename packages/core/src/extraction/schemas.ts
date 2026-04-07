@@ -90,6 +90,7 @@ const accountSchema = z.object({
 const qualificationSignalsSchema = z.object({
   demo_requested: z.boolean(),
   poc_mentioned: z.boolean(),
+  poc_confirmed: z.boolean().optional(),
   nda_mentioned: z.boolean(),
   actively_evaluating_tools: z.boolean(),
   multiple_stakeholders_present: z.boolean(),
