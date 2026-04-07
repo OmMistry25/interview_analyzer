@@ -29,7 +29,7 @@ Understanding what each stage means is critical for calibrating your evaluation:
 - **Stage 4**: POC completed, contracting & negotiating
 - **Stage 5**: Closed Won
 
-You are evaluating **Stage 0 calls** — the first intro/demo meeting. The question is: should this deal move to Stage 1?
+You are primarily evaluating **Stage 0 calls** — the first intro/demo meeting. The question is: should this deal move to Stage 1? However, some calls may already be past Stage 0 (e.g., POC scoping, follow-up demos, security reviews). Recognize these from the meeting title and conversation content — if the deal is already past Stage 1, the probability of moving to Stage 1 should reflect that it's already there.
 
 ## BANT Scoring (1-5 per dimension)
 
@@ -94,65 +94,50 @@ Formula for enterprise: score = (budget * 2 + authority * 4 + need * 8 + timing 
 - Authority threshold: Authority >= 3 (same, but the rubric above is more lenient)
 - Need and Timing thresholds: unchanged
 
-## ICP Fit Modifier
+## Holistic Evaluation Principles
 
-Use the extracted icp_fit field to adjust your evaluation:
+After scoring each BANT dimension, step back and evaluate the WHOLE picture. Do NOT do arithmetic with fixed percentages. Instead, reason about the deal holistically using these principles:
 
-- **strong_fit**: No adjustment needed. This is Console's sweet spot.
-- **moderate_fit**: Minor caution. Note the gap in coaching_notes (e.g., "verify Teams/Slack migration plans" or "confirm Okta rollout timeline").
-- **poor_fit**: Major risk flag. Probability should be reduced by 15-25 points. Add a red_flag noting the specific mismatch (e.g., "Prospect uses Entra AD — not supported by Console today"). If the prospect uses Microsoft 365 + Entra AD as primary stack, this is likely a disqualifier unless they are migrating.
+### ICP Fit
+
+Use the extracted icp_fit to contextualize your evaluation:
+- **strong_fit**: Console's sweet spot — no adjustment needed.
+- **moderate_fit**: Note the gap in coaching_notes (e.g., "verify Teams/Slack migration plans"). Minor caution but should not significantly reduce probability if other signals are strong.
+- **poor_fit**: Flag the specific mismatch as a red_flag. Consider whether the gap is bridgeable (e.g., Teams migration planned) or a blocker (e.g., Entra AD only, no Slack). Let this inform your probability but don't apply a fixed penalty — weigh it against the strength of other signals.
 - **unknown**: Note in coaching_notes that tech stack qualification is needed on the next call.
 
-## Qualification Signals
+### Qualification Signals (Green Flags)
 
-Use the extracted qualification_signals to boost or reduce probability:
+These signals INCREASE confidence that the deal will progress. The more of these present, the higher the probability should be:
+- **POC confirmed or scheduled** (poc_confirmed = true, or the meeting title/context indicates a POC scoping call, POC kickoff, security review, or contract discussion): This is the strongest possible signal. A confirmed POC means the deal has ALREADY passed Stage 1 — it's a Stage 2+ signal. Probability should be very high (90%+) regardless of individual BANT gaps, because the prospect has committed to evaluating Console in production.
+- **Demo requested**: Team demo is the key Stage 0→1 exit criteria. Strong forward momentum.
+- **POC mentioned** (but not confirmed): Shows buying intent, prospect is thinking about evaluation.
+- **NDA mentioned**: Legal engagement signals serious evaluation, not just tire-kicking.
+- **Actively evaluating tools**: Demonstrates an active buying cycle — likely a "Sell S1".
+- **Multiple stakeholders present**: Signals active evaluation without needing deep pain discovery.
+- **Fast-growing team with high ticket volume**: Strong need signal for Console.
 
-**Green flags** (each adds confidence):
-- demo_requested = true: +5-10% probability. Team demo is the key Stage 0→1 exit criteria.
-- poc_mentioned = true: +10-15%. Strong buying intent.
-- nda_mentioned = true: +5-10%. Legal engagement signals serious evaluation.
-- actively_evaluating_tools = true: +5-10%. Demonstrates active buying cycle (likely a "Sell S1").
-- multiple_stakeholders_present = true: +5%. Multiple attendees signals active evaluation without needing deep pain discovery.
-- Fast-growing team with high ticket volume (from it_team_structure): +5-10%.
+### Risk Signals (Red Flags)
 
-**Red flags** (each reduces confidence):
-- has_fulltime_it = false AND no strong budget/timeline/demo signals: -15-20%. No IT person usually means premature.
-- uses_msp = true: -10-15%. Timeline typically deferred ("in 3 months when we transition").
-- entra_ad = true: -20%. Not supported today — likely disqualifier.
-- icp_fit = poor_fit: -15-25%.
+These signals REDUCE confidence. Weigh them against the green flags — a single red flag should not tank a deal that has strong positive signals:
+- **No full-time IT person** (and no strong compensating signals like budget/timeline/demo): Usually means the company isn't ready for Console yet.
+- **Uses MSP**: Timeline typically deferred. But if the MSP itself is the prospect exploring Console for their clients, evaluate the specific use case.
+- **Entra AD as primary IDP**: Not supported by Console today — significant blocker unless migrating.
+- **Poor ICP fit**: Consider the specific gaps and whether they're bridgeable.
 
-## Competitor Logic
+### Competitor Logic
 
-Use the extracted competitor information:
-
-- **Competitor mention is generally POSITIVE** — it shows the prospect is actively evaluating tools, which is a buying signal.
-- **Moveworks mention is a STRONG positive** — Console has a proven rip-and-replace story (Webflow case study). Boost confidence.
-- **Flag as concern ONLY if**: prospect is an ACTIVE CUSTOMER of a competitor (competitor_is_active_customer = true) with no indication of upcoming renewal, dissatisfaction, or evaluation. In that case, the prospect may just be exploring without intent to switch.
+- Competitor mentions are generally **positive** — they show the prospect is actively evaluating tools.
+- **Moveworks mentions are a strong positive** — Console has a proven rip-and-replace story (Webflow case study).
+- Only flag a competitor as a concern if the prospect is an ACTIVE CUSTOMER with no indication of dissatisfaction or upcoming renewal.
 
 ## S1 Type Classification
 
 Classify the deal into one of three categories:
 
-- **"sell_s1"**: Active buying cycle confirmed. Indicators: actively evaluating tools, competitor evaluation underway, specific timeline, demo/POC requested, or prospect explicitly states they need a solution.
-- **"chase_s1"**: Potential fit but no confirmed buying cycle. Indicators: prospect has the right profile (ICP fit) and expressed interest, but no specific timeline, no demo commitment, AE would need to drive momentum. The call showed "Needs Work" — enough signal to pursue but not yet qualified.
+- **"sell_s1"**: Active buying cycle confirmed. Indicators: actively evaluating tools, competitor evaluation underway, specific timeline, demo/POC requested or confirmed, or prospect explicitly states they need a solution.
+- **"chase_s1"**: Potential fit but no confirmed buying cycle. Indicators: prospect has the right profile and expressed interest, but no specific timeline, no demo commitment, AE would need to drive momentum.
 - **"not_s1"**: Does not meet Stage 1 criteria. Missing critical BANT signals, poor ICP fit, or prospect showed no real buying intent.
-
-## POC Override Rule (CRITICAL — apply BEFORE probability calculation)
-
-If the prospect has **confirmed or scheduled a POC** on this call — meaning they actively agreed to a proof of concept with a timeline, scope discussion, or next steps to kick it off — then the deal has ALREADY cleared Stage 1. Apply these overrides:
-
-- Set `stage_1_probability` to **95-100%**
-- Set `overall_status` to **"Qualified"**
-- Set `s1_type` to **"sell_s1"**
-- Add a green_flag: "POC confirmed/scheduled — deal is past Stage 1"
-
-This applies regardless of individual BANT scores. A POC commitment is a Stage 2 signal in the pipeline, which means Stage 1 qualification is already settled.
-
-How to distinguish POC confirmed vs. POC merely mentioned:
-- **POC confirmed**: "Let's start the POC next week", "We'll scope the POC on Wednesday", "Let's set up a pilot with one of our clients", "We're happy to set up a quick POC", prospect agrees to timeline and scope
-- **POC merely mentioned**: "We could maybe do a pilot someday", "POCs are something we do generally", hypothetical or future-tense without commitment — treat this as a green flag boost (+10-15%) but NOT an override
-
-Similarly, if the meeting title or context indicates this is a **POC scoping call, POC kickoff, security review, or contract discussion**, the deal is already past Stage 1. Apply the same overrides.
 
 ## Stage 1 Qualification
 
@@ -161,22 +146,23 @@ A call qualifies for Stage 1 (Demo Completed & Sales Qualified) when minimum BAN
 - Authority score >= 3 (champion or decision maker identified)
 - Timing score >= 2 (some timeline awareness)
 
-Stage 1 probability should reflect confidence that this deal will progress to a team demo or POC.
+Stage 1 probability should reflect your overall confidence that this deal will progress, considering ALL signals holistically — BANT scores, qualification signals, ICP fit, competitor context, and prospect sentiment.
 
-### Mid-tier probability ranges
-- 0-20%: Missing most BANT criteria, unlikely to progress
-- 21-40%: Some signals but major gaps remain
-- 41-60%: Decent discovery, a few unknowns to resolve
-- 61-80%: Strong BANT, clear path forward
-- 81-100%: Exceptional discovery, all criteria met with conviction
+### Probability guidance
 
-### Enterprise probability ranges
-For enterprise deals, probability must be computed against ENTERPRISE thresholds. A Budget score of 1 is EXPECTED and must NOT reduce the probability. Evaluate based primarily on Need, Timing, and Authority:
-- 0-20%: Need or Authority clearly missing (score <= 2)
-- 21-40%: Need or Authority weak, no clear path to next steps
-- 41-60%: Need identified but Authority or Timing uncertain
-- 61-80%: Strong Need + Authority champion identified + follow-up planned — this is a GOOD enterprise Stage 0 outcome
-- 81-100%: Decision maker engaged, urgent need, timeline committed
+Think of probability as answering: "How confident am I that this deal moves forward to a team demo or POC?"
+
+- **Very low**: No clear need or authority, prospect unengaged, poor ICP fit, no next steps
+- **Low**: Some signals present but major gaps remain, prospect is passive
+- **Moderate**: Decent discovery, prospect is interested but some unknowns to resolve
+- **High**: Strong BANT, clear path forward, prospect engaged and committed to next steps
+- **Very high**: All criteria met, POC or demo confirmed/scheduled, prospect driving the process
+
+For enterprise deals, remember that Budget = 1 and Authority = 3 are acceptable thresholds. Do NOT penalize probability for expected enterprise Stage 0 gaps.
+
+### Key principle
+
+The probability should be driven by the STRONGEST signals on the call. If a POC has been confirmed, a demo has been scheduled with decision makers, or the meeting itself is a POC scoping call — these are Stage 2+ signals that indicate Stage 1 is already cleared. Probability should reflect that reality, not be dragged down by individual BANT dimension gaps.
 
 ## Output Format
 
