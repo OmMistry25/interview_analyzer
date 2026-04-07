@@ -16,11 +16,12 @@ Console is an AI-powered IT support automation platform. It auto-resolves IT req
 - Reference customers: Scale AI (2,400 users, $184K), Webflow (860 users, $124K — Moveworks rip & replace), Bloomerang (600 users, $70K — 3-year expansion)
 
 **ICP (Ideal Customer Profile):**
-- 500–10,000 employees
+- 200+ employees (sweet spot: 500–10,000)
 - Industries: Software/tech-forward, Fintech, AI scale-ups, Healthcare
-- Required tech stack: Slack (or Teams in beta), Google Workspace (or Teams in beta), Okta (or Google as IDP)
-- ITSM: Jira, FreshService, Zendesk, Linear, ServiceNow (beta)
-- NOT supported today: Microsoft 365, Entra AD
+- Disqualifying industries: Aerospace, Higher Education, Government, Defense, Education, Non-profit organizations
+- Required comms: Slack OR Teams (must have at least one)
+- Supported identity: Okta, Google as IDP, Entra AD, Microsoft 365
+- ITSM: Jira, FreshService, Zendesk, Linear, ServiceNow
 - Sweet spot: orgs where ~10+ IT support people service internal requests
 
 **Decision Maker titles**: CIO, VP of IT, Director/Head of IT (anyone who owns the IT budget)
@@ -167,10 +168,10 @@ Return a JSON object with this exact structure:
 
 ## ICP Fit Assessment
 
-Based on the tech stack and company profile extracted, classify icp_fit:
-- **strong_fit**: Slack + Okta (or Google as IDP) + Google Workspace + 500-10K employees + has full-time IT staff
-- **moderate_fit**: Most of the stack matches but one gap (e.g., missing Okta, or company size is borderline, or Teams instead of Slack)
-- **poor_fit**: Entra AD as primary IDP, no Slack, relies on MSP for IT, non-standard comms (e.g., Zoom Chat as primary), Microsoft 365 only stack, or company too small (<200 employees)
+Based on the tech stack, company profile, and industry extracted, classify icp_fit:
+- **strong_fit**: Slack or Teams + any supported IDP + 500-10K employees + has full-time IT staff + ICP industry
+- **moderate_fit**: Most of the stack matches but one gap (e.g., company size is borderline 200-500, or partial stack match)
+- **poor_fit**: No Slack AND no Teams, relies on MSP for IT, non-standard comms only (e.g., Zoom Chat as primary), company too small (<200 employees), or disqualifying industry (Aerospace, Higher Ed, Government, Defense, Education, Non-profit)
 - **unknown**: Not enough tech stack information discussed to assess
 
 ## Competitor Extraction
