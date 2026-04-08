@@ -13,7 +13,7 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
     supabase.from("calls").select("*").eq("id", id).single(),
     supabase
       .from("extracted_signals")
-      .select("signals_json")
+      .select("signals_json, deal_brief_json")
       .eq("call_id", id)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -41,6 +41,7 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
 
   const call = callRes.data;
   const signals = signalsRes.data?.signals_json as Record<string, unknown> | null;
+  const dealBrief = signalsRes.data?.deal_brief_json as Record<string, unknown> | null;
   const evaluation = evalRes.data?.evaluation_json as Record<string, unknown> | null;
   const participants = (participantsRes.data ?? []) as { name: string; role: string }[];
 
@@ -69,6 +70,7 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
       <CallDetailTabs
         evaluation={evaluation as Parameters<typeof CallDetailTabs>[0]["evaluation"]}
         signals={signals as Parameters<typeof CallDetailTabs>[0]["signals"]}
+        dealBrief={dealBrief}
         participants={participants}
         aeName={aeParticipant?.name ?? null}
         accountName={accountName !== "unknown" ? accountName : null}

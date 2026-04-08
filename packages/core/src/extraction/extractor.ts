@@ -6,7 +6,7 @@ import { NormalizedUtterance, MeetingContext } from "../types/normalized";
 
 const PROMPT_PATH = path.resolve(__dirname, "../prompts/extractor_v4.txt");
 
-function buildMetadataBlock(ctx: MeetingContext): string {
+export function buildMetadataBlock(ctx: MeetingContext): string {
   const lines: string[] = [
     "## MEETING METADATA",
     `Meeting title: ${ctx.meetingTitle}`,
@@ -31,7 +31,7 @@ function buildMetadataBlock(ctx: MeetingContext): string {
   return lines.join("\n");
 }
 
-function buildTranscriptBlock(utterances: NormalizedUtterance[]): string {
+export function buildTranscriptBlock(utterances: NormalizedUtterance[]): string {
   const lines = utterances.map((u) => `[${u.speakerLabelRaw}]: ${u.textNormalized}`);
   return "## TRANSCRIPT\n" + lines.join("\n");
 }

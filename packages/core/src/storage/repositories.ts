@@ -242,6 +242,7 @@ export async function persistExtractedSignals(
     callId: string;
     signalsJson: unknown;
     qualityChecks?: unknown;
+    dealBriefJson?: unknown | null;
   }
 ): Promise<{ id: string }> {
   const { data, error } = await db
@@ -251,6 +252,7 @@ export async function persistExtractedSignals(
       call_id: params.callId,
       signals_json: params.signalsJson,
       quality_checks: params.qualityChecks ?? null,
+      deal_brief_json: params.dealBriefJson ?? null,
     })
     .select("id")
     .single();

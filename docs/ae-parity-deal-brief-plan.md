@@ -3,6 +3,15 @@
 **Branch:** `feature/ae-parity-deal-brief`  
 **Purpose:** Spec for closing the gap between human AE judgment (detail, synthesis, reasoning) and what the pipeline captures—using one rich transcript as an illustration, not an industry-specific case.
 
+## Shipped (v1)
+
+- **Second LLM pass** after BANT extraction: [`packages/core/src/dealBrief/`](../packages/core/src/dealBrief/) + prompt [`deal_brief_v1.txt`](../packages/core/src/prompts/deal_brief_v1.txt).
+- **Persistence:** `extracted_signals.deal_brief_json` (apply migration [`20260409000000_extracted_signals_deal_brief.sql`](../supabase/migrations/20260409000000_extracted_signals_deal_brief.sql)).
+- **Evaluator** receives the brief when present ([`evaluator.ts`](../packages/core/src/evaluation/evaluator.ts) + [`evaluator_v3.txt`](../packages/core/src/prompts/evaluator_v3.txt)).
+- **UI:** Call detail **AE Brief** tab ([`CallDetailTabs.tsx`](../apps/web/components/CallDetailTabs.tsx)).
+- **Zapier:** `raw.deal_brief` on the worker callback payload.
+- **Cost:** one additional OpenAI JSON call per processed call; failures on brief generation are logged and do not fail the run.
+
 ## Follow-up work (tracked)
 
 - Optionally diff live `extracted_signals` + `evaluation_json` for a sample call against an AE-written brief.

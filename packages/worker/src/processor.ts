@@ -2,6 +2,7 @@ import { SupabaseClient } from "@supabase/supabase-js";
 import { isFathomMeeting } from "@transcript-evaluator/core/src/ingestion/fathomPayload";
 import { mapFathomToNormalized, buildMeetingContext, parseMeetingTitle, KNOWN_AES } from "@transcript-evaluator/core/src/ingestion/mapping";
 import { extractSignals } from "@transcript-evaluator/core/src/extraction/extractor";
+import { extractDealBrief } from "@transcript-evaluator/core/src/dealBrief/extractor";
 import { evaluateSignals } from "@transcript-evaluator/core/src/evaluation/evaluator";
 import { crossCheckEvaluation } from "@transcript-evaluator/core/src/evaluation/rulesEngine";
 import { lookupCompanySize } from "@transcript-evaluator/core/src/enrichment/apollo";
@@ -9,6 +10,7 @@ import { formatGrowthTeamDigest, formatAESlackMessage } from "@transcript-evalua
 import { runDailyExtraction, runBackfill, runWeeklyAnalysis } from "@transcript-evaluator/core/src/analysis/geoAnalysisPipeline";
 import type { EvaluationResult } from "@transcript-evaluator/core/src/evaluation/schemas";
 import type { ExtractedSignals } from "@transcript-evaluator/core/src/extraction/schemas";
+import type { DealBrief } from "@transcript-evaluator/core/src/dealBrief/schemas";
 import {
   getWebhookEvent,
   upsertCall,
@@ -125,14 +127,25 @@ async function processFathomMeeting(
     const signals = await extractSignals(normalized.utterances, meetingCtx);
     console.log("  Signals extracted.");
 
+    let dealBrief: DealBrief | null = null;
+    try {
+      console.log("  Building AE deal brief...");
+      dealBrief = await extractDealBrief(normalized.utterances, meetingCtx, signals);
+      console.log("  Deal brief done.");
+    } catch (briefErr) {
+      const msg = briefErr instanceof Error ? briefErr.message : String(briefErr);
+      console.warn(`  Deal brief skipped: ${msg.slice(0, 200)}`);
+    }
+
     await persistExtractedSignals(db, {
       processingRunId: run.id,
       callId: call.id,
       signalsJson: signals,
+      dealBriefJson: dealBrief,
     });
 
     console.log("  Evaluating (BANT)...");
-    const evaluation = await evaluateSignals(signals, meetingCtx);
+    const evaluation = await evaluateSignals(signals, meetingCtx, "gpt-4o", dealBrief);
     console.log(`  Evaluation: ${evaluation.overall_status} (score: ${evaluation.score}, stage1: ${evaluation.stage_1_probability}%)`);
 
     const crossCheck = crossCheckEvaluation(signals, evaluation, meetingCtx.dealSegment);
@@ -155,7 +168,7 @@ async function processFathomMeeting(
 
     const callbackUrl = payload.callback_url as string | undefined;
     if (callbackUrl) {
-      await fireCallback(callbackUrl, evaluation, signals, meetingCtx);
+      await fireCallback(callbackUrl, evaluation, signals, meetingCtx, dealBrief);
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -168,7 +181,8 @@ async function fireCallback(
   url: string,
   evaluation: EvaluationResult,
   signals: ExtractedSignals,
-  meetingCtx: { meetingTitle: string; prospectCompany: string | null; aeName: string | null }
+  meetingCtx: { meetingTitle: string; prospectCompany: string | null; aeName: string | null },
+  dealBrief: DealBrief | null
 ): Promise<void> {
   const ctx = {
     aeName: meetingCtx.aeName,
@@ -186,6 +200,7 @@ async function fireCallback(
       evaluation,
       signals_summary: signals.call_summary,
       participant_titles: signals.participant_titles,
+      deal_brief: dealBrief,
     },
   };
 
@@ -352,14 +367,25 @@ async function reprocessCall(
     const signals = await extractSignals(utterances, meetingCtx);
     console.log("  Signals extracted.");
 
+    let dealBrief: DealBrief | null = null;
+    try {
+      console.log("  Building AE deal brief...");
+      dealBrief = await extractDealBrief(utterances, meetingCtx, signals);
+      console.log("  Deal brief done.");
+    } catch (briefErr) {
+      const msg = briefErr instanceof Error ? briefErr.message : String(briefErr);
+      console.warn(`  Deal brief skipped: ${msg.slice(0, 200)}`);
+    }
+
     await persistExtractedSignals(db, {
       processingRunId: run.id,
       callId,
       signalsJson: signals,
+      dealBriefJson: dealBrief,
     });
 
     console.log("  Evaluating (BANT)...");
-    const evaluation = await evaluateSignals(signals, meetingCtx);
+    const evaluation = await evaluateSignals(signals, meetingCtx, "gpt-4o", dealBrief);
     console.log(`  Evaluation: ${evaluation.overall_status} (score: ${evaluation.score}, stage1: ${evaluation.stage_1_probability}%)`);
 
     const crossCheck = crossCheckEvaluation(signals, evaluation, meetingCtx.dealSegment);

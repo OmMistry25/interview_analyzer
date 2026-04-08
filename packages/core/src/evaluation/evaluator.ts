@@ -3,6 +3,7 @@ import fs from "fs";
 import path from "path";
 import { evaluationSchema, EvaluationResult } from "./schemas";
 import { ExtractedSignals } from "../extraction/schemas";
+import type { DealBrief } from "../dealBrief/schemas";
 import { MeetingContext } from "../types/normalized";
 
 const PROMPT_PATH = path.resolve(__dirname, "../prompts/evaluator_v3.txt");
@@ -10,14 +11,25 @@ const PROMPT_PATH = path.resolve(__dirname, "../prompts/evaluator_v3.txt");
 export async function evaluateSignals(
   signals: ExtractedSignals,
   context: MeetingContext,
-  model = "gpt-4o"
+  model = "gpt-4o",
+  dealBrief?: DealBrief | null
 ): Promise<EvaluationResult> {
   const systemPrompt = fs.readFileSync(PROMPT_PATH, "utf-8");
+
+  const briefBlock =
+    dealBrief != null
+      ? [
+          "## AE DEAL BRIEF (synthesized from transcript; cross-check against EXTRACTED SIGNALS)",
+          JSON.stringify(dealBrief, null, 2),
+          "",
+        ].join("\n")
+      : "";
 
   const userMessage = [
     "## EXTRACTED SIGNALS",
     JSON.stringify(signals, null, 2),
     "",
+    briefBlock,
     "## MEETING CONTEXT",
     `Our company: ${context.ourCompany}`,
     `Prospect company: ${context.prospectCompany ?? "Unknown"}`,

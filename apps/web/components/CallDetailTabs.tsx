@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { shouldShowParticipantTitle } from "@transcript-evaluator/core/src/formatting/slackPayload";
 
 interface BantScore {
@@ -67,9 +67,22 @@ interface Participant {
   role: string;
 }
 
+interface DealBriefJson {
+  contacts?: { name: string; role_summary: string; evidence?: string[] }[];
+  stack?: { summary: string; tools?: string[]; evidence?: string[] };
+  catalyst_why_now?: { summary: string; evidence?: string[] };
+  scope_and_intake?: { summary: string; evidence?: string[] };
+  pain_points?: { summary: string; evidence?: string[] }[];
+  what_they_want_next?: string[];
+  parallel_tracks?: string[];
+  discovery?: { summary: string; evidence?: string[] };
+  next_steps?: { summary: string; evidence?: string[] };
+}
+
 interface CallDetailTabsProps {
   evaluation: EvaluationJson | null;
   signals: ExtractedSignals | null;
+  dealBrief?: Record<string, unknown> | null;
   participants: Participant[];
   aeName: string | null;
   accountName: string | null;
@@ -78,11 +91,18 @@ interface CallDetailTabsProps {
 export default function CallDetailTabs({
   evaluation,
   signals,
+  dealBrief,
   participants,
   aeName,
   accountName,
 }: CallDetailTabsProps) {
-  const [view, setView] = useState<"ae" | "growth">("ae");
+  const brief = dealBrief as DealBriefJson | null;
+  const hasBrief = !!(brief && Object.keys(brief).length > 0);
+  const [view, setView] = useState<"brief" | "ae" | "growth">(() => (hasBrief ? "brief" : "ae"));
+
+  useEffect(() => {
+    if (view === "brief" && !hasBrief) setView("ae");
+  }, [view, hasBrief]);
 
   if (!evaluation && !signals) {
     return <p className="mt-24" style={{ color: "var(--text-tertiary)" }}>Processing not yet completed for this call.</p>;
@@ -91,6 +111,14 @@ export default function CallDetailTabs({
   return (
     <div className="mt-24">
       <div className="tab-bar">
+        {hasBrief ? (
+          <button
+            onClick={() => setView("brief")}
+            className={`tab ${view === "brief" ? "tab-active" : ""}`}
+          >
+            AE Brief
+          </button>
+        ) : null}
         <button
           onClick={() => setView("ae")}
           className={`tab ${view === "ae" ? "tab-active" : ""}`}
@@ -105,7 +133,9 @@ export default function CallDetailTabs({
         </button>
       </div>
 
-      {view === "ae" ? (
+      {view === "brief" && brief ? (
+        <BriefView brief={brief} />
+      ) : view === "ae" ? (
         <AEView evaluation={evaluation} signals={signals} />
       ) : (
         <GrowthView
@@ -117,6 +147,104 @@ export default function CallDetailTabs({
         />
       )}
     </div>
+  );
+}
+
+function BriefView({ brief }: { brief: DealBriefJson }) {
+  return (
+    <section className="card" style={{ lineHeight: 1.75 }}>
+      <p className="page-meta" style={{ marginBottom: 20 }}>
+        Second-pass synthesis from the transcript (with quotes). Reprocess the call after deploying to generate if empty.
+      </p>
+
+      {brief.contacts && brief.contacts.length > 0 ? (
+        <div className="mb-16">
+          <h3 className="section-title">Contacts</h3>
+          <ul className="list-clean">
+            {brief.contacts.map((c, i) => (
+              <li key={i}>
+                <strong>{c.name}</strong>
+                {c.role_summary ? ` — ${c.role_summary}` : ""}
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {brief.stack?.summary ? (
+        <div className="mb-16">
+          <h3 className="section-title">Stack</h3>
+          <p style={{ color: "var(--text-secondary)" }}>{brief.stack.summary}</p>
+          {brief.stack.tools && brief.stack.tools.length > 0 ? (
+            <p className="mt-8" style={{ fontSize: 13 }}>
+              <span className="digest-label">Tools: </span>
+              {brief.stack.tools.join(" · ")}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
+
+      {brief.catalyst_why_now?.summary ? (
+        <div className="mb-16">
+          <h3 className="section-title">Why now</h3>
+          <p style={{ color: "var(--text-secondary)" }}>{brief.catalyst_why_now.summary}</p>
+        </div>
+      ) : null}
+
+      {brief.scope_and_intake?.summary ? (
+        <div className="mb-16">
+          <h3 className="section-title">Scope & intake</h3>
+          <p style={{ color: "var(--text-secondary)" }}>{brief.scope_and_intake.summary}</p>
+        </div>
+      ) : null}
+
+      {brief.pain_points && brief.pain_points.length > 0 ? (
+        <div className="mb-16">
+          <h3 className="section-title">Pain points</h3>
+          <ul className="list-clean">
+            {brief.pain_points.map((p, i) => (
+              <li key={i} style={{ color: "var(--text-secondary)" }}>{p.summary}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {brief.what_they_want_next && brief.what_they_want_next.length > 0 ? (
+        <div className="mb-16">
+          <h3 className="section-title">What they want next</h3>
+          <ul className="list-clean">
+            {brief.what_they_want_next.map((w, i) => (
+              <li key={i} style={{ color: "var(--text-secondary)" }}>{w}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {brief.parallel_tracks && brief.parallel_tracks.length > 0 ? (
+        <div className="mb-16">
+          <h3 className="section-title">Parallel tracks</h3>
+          <ul className="list-clean">
+            {brief.parallel_tracks.map((t, i) => (
+              <li key={i} style={{ color: "var(--text-secondary)" }}>{t}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {brief.discovery?.summary ? (
+        <div className="mb-16">
+          <h3 className="section-title">Discovery</h3>
+          <p style={{ color: "var(--text-secondary)" }}>{brief.discovery.summary}</p>
+        </div>
+      ) : null}
+
+      {brief.next_steps?.summary ? (
+        <div className="mb-16">
+          <h3 className="section-title">Next steps</h3>
+          <p style={{ color: "var(--text-secondary)" }}>{brief.next_steps.summary}</p>
+        </div>
+      ) : null}
+    </section>
   );
 }
 
