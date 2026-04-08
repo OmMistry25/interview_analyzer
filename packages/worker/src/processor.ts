@@ -132,7 +132,7 @@ async function processFathomMeeting(
     let dealBrief: DealBrief | null = null;
     if (briefEnabled) {
       try {
-        console.log("  Building AE deal brief (DEAL_BRIEF_ENABLED=true)...");
+        console.log("  Building AE deal brief...");
         dealBrief = await extractDealBrief(normalized.utterances, meetingCtx, signals);
         console.log("  Deal brief done.");
       } catch (briefErr) {
@@ -140,7 +140,7 @@ async function processFathomMeeting(
         console.warn(`  Deal brief failed: ${msg.slice(0, 200)}`);
       }
     } else {
-      console.log("  Deal brief pipeline off (set DEAL_BRIEF_ENABLED=true to enable).");
+      console.log("  Deal brief pipeline off (DEAL_BRIEF_ENABLED=false).");
     }
 
     await persistExtractedSignals(db, {
@@ -377,7 +377,7 @@ async function reprocessCall(
     let dealBrief: DealBrief | null = null;
     if (briefEnabled) {
       try {
-        console.log("  Building AE deal brief (DEAL_BRIEF_ENABLED=true)...");
+        console.log("  Building AE deal brief...");
         dealBrief = await extractDealBrief(utterances, meetingCtx, signals);
         console.log("  Deal brief done.");
       } catch (briefErr) {
@@ -385,7 +385,7 @@ async function reprocessCall(
         console.warn(`  Deal brief failed: ${msg.slice(0, 200)}`);
       }
     } else {
-      console.log("  Deal brief pipeline off (set DEAL_BRIEF_ENABLED=true to enable).");
+      console.log("  Deal brief pipeline off (DEAL_BRIEF_ENABLED=false).");
     }
 
     await persistExtractedSignals(db, {

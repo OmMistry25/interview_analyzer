@@ -8,7 +8,8 @@ export const dynamic = "force-dynamic";
 export default async function CallDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createSupabaseServerClient();
-  const dealBriefUiEnabled = process.env.NEXT_PUBLIC_DEAL_BRIEF_UI_ENABLED === "true";
+  // Default on; set NEXT_PUBLIC_DEAL_BRIEF_UI_ENABLED=false to hide tab / skip selecting deal_brief_json
+  const dealBriefUiEnabled = process.env.NEXT_PUBLIC_DEAL_BRIEF_UI_ENABLED !== "false";
   const signalsSelect = dealBriefUiEnabled ? "signals_json, deal_brief_json" : "signals_json";
 
   const [callRes, signalsRes, evalRes, participantsRes] = await Promise.all([

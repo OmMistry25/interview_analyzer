@@ -12,16 +12,18 @@
 - **Zapier:** `raw.deal_brief` on the worker callback payload.
 - **Cost:** one additional OpenAI JSON call per processed call; failures on brief generation are logged and do not fail the run.
 
-### Feature flags (merge to main without changing prod behavior)
+### Feature flags (opt-out)
 
-| Variable | Where | When `true` |
-|----------|--------|-------------|
-| `DEAL_BRIEF_ENABLED` | **Railway worker** | Runs deal-brief LLM; passes brief to evaluator; includes `deal_brief_json` on insert (needs DB column). |
-| `NEXT_PUBLIC_DEAL_BRIEF_UI_ENABLED` | **Vercel** | Selects `deal_brief_json` and shows the **AE Brief** tab. |
+Deal brief + UI are **enabled by default** when env vars are omitted.
 
-**Default:** omit both or set `false`. Worker **omits** `deal_brief_json` from inserts when disabled, so **no migration is required** until you turn the worker flag on.
+| Variable | Where | Set to `false` to… |
+|----------|--------|---------------------|
+| `DEAL_BRIEF_ENABLED` | **Railway worker** | Skip brief LLM; omit `deal_brief_json` from inserts (works if the DB column does not exist yet). |
+| `NEXT_PUBLIC_DEAL_BRIEF_UI_ENABLED` | **Vercel** | Hide **AE Brief** tab and do not select `deal_brief_json`. |
 
-**Rollout:** (1) Merge code. (2) Prod stays unchanged with flags off. (3) Staging: run migration → `DEAL_BRIEF_ENABLED=true` on staging Railway → `NEXT_PUBLIC_DEAL_BRIEF_UI_ENABLED=true` on staging Vercel. (4) When happy: migrate prod, then enable both on prod.
+**With defaults on:** apply migration [`20260409000000_extracted_signals_deal_brief.sql`](../supabase/migrations/20260409000000_extracted_signals_deal_brief.sql) on Supabase **before** or **with** deploy so inserts and UI queries succeed.
+
+**Emergency rollback:** set both to `false` on Railway/Vercel (no need to revert the merge).
 
 ## Follow-up work (tracked)
 
