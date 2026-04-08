@@ -2,6 +2,7 @@ import OpenAI from "openai";
 import fs from "fs";
 import path from "path";
 import { extractedSignalsSchema, ExtractedSignals } from "./schemas";
+import { enrichExtractedSignalsStackCatalog } from "../stack/enrichSignals";
 import { NormalizedUtterance, MeetingContext } from "../types/normalized";
 
 const PROMPT_PATH = path.resolve(__dirname, "../prompts/extractor_v4.txt");
@@ -61,6 +62,5 @@ export async function extractSignals(
 
   const parsed = JSON.parse(content);
   const validated = extractedSignalsSchema.parse(parsed);
-
-  return validated;
+  return enrichExtractedSignalsStackCatalog(validated);
 }

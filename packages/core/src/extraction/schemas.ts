@@ -104,6 +104,11 @@ const participantTitleSchema = z.object({
   role_in_deal: z.enum(["decision_maker", "champion", "evaluator", "end_user", "unknown"]),
 });
 
+const stackMentionSchema = z.object({
+  mention: z.string(),
+  evidence: z.array(z.string()),
+});
+
 export const extractedSignalsSchema = z.object({
   budget: budgetSchema,
   authority: authoritySchema,
@@ -113,6 +118,10 @@ export const extractedSignalsSchema = z.object({
   qualification_signals: qualificationSignalsSchema,
   participant_titles: z.array(participantTitleSchema),
   call_summary: z.string(),
+  /** High-recall vendor/tool rows from the transcript (verbatim names + quotes). */
+  stack_mentions: z.array(stackMentionSchema).optional(),
+  /** Filled after extraction by matching snippets against packages/core/src/stack/catalog.ts */
+  stack_canonical_hits: z.array(z.string()).optional(),
 });
 
 export type ExtractedSignals = z.infer<typeof extractedSignalsSchema>;

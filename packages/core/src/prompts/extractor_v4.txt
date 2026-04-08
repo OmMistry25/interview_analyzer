@@ -68,6 +68,8 @@ Listen for mentions of the prospect's technology stack throughout the call. This
 - **MDM**: Jamf, Kandji, or other
 - **Knowledge Base**: Confluence, Zendesk, Notion, or other
 
+Also populate **stack_mentions** (root level, see JSON schema): high-recall list of every distinct vendor, product, or platform the prospect **names** in relation to their IT stack, collaboration, identity, service desk, MDM, security, or AI/automation tools (including competitors and tools they are evaluating). One object per distinct name; use the wording from the call when possible. Include at least one verbatim evidence quote per entry when the tool was clearly discussed (empty evidence array only if you cannot tie a short quote without guessing). If nothing relevant was discussed, use an empty array `[]`. Do **not** duplicate the same product twice.
+
 ## Qualification Signal Extraction
 
 Look for these specific signals that indicate deal progression:
@@ -163,7 +165,10 @@ Return a JSON object with this exact structure:
   "participant_titles": [
     { "name": "<participant name>", "title": "<job title>", "role_in_deal": "<decision_maker|champion|evaluator|end_user|unknown>" }
   ],
-  "call_summary": "<2-3 sentence summary of what was discussed on the call>"
+  "call_summary": "<2-3 sentence summary of what was discussed on the call>",
+  "stack_mentions": [
+    { "mention": "<vendor or product as said on the call>", "evidence": ["<verbatim quote>"] }
+  ]
 }
 
 ## ICP Fit Assessment
@@ -207,3 +212,4 @@ IMPORTANT:
 - participant_titles should only include people whose title or role was explicitly mentioned in the transcript.
 - prospect_sentiment evidence can be empty if disposition is "unknown".
 - For tech_stack, it_team_structure, and qualification_signals: set booleans to true only if explicitly mentioned or clearly implied in the transcript. Default to false if not discussed.
+- Do **not** include a field named `stack_canonical_hits` in your JSON; the pipeline derives that separately.

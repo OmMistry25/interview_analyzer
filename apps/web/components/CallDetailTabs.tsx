@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { shouldShowParticipantTitle } from "@transcript-evaluator/core/src/formatting/slackPayload";
+import { stackCatalogLabel } from "@transcript-evaluator/core/src/stack/catalog";
 
 interface BantScore {
   score: number;
@@ -60,6 +61,8 @@ interface ExtractedSignals {
   qualification_signals?: QualificationSignals;
   participant_titles: { name: string; title: string; role_in_deal: string }[];
   call_summary: string;
+  stack_mentions?: { mention: string; evidence: string[] }[];
+  stack_canonical_hits?: string[];
 }
 
 interface Participant {
@@ -569,6 +572,41 @@ function SignalsTable({ signals }: { signals: ExtractedSignals }) {
               </span>
             ))}
           </div>
+        </div>
+      )}
+
+      {signals.stack_canonical_hits && signals.stack_canonical_hits.length > 0 && (
+        <div className="mb-16">
+          <h3 className="mb-8">Stack (canonical)</h3>
+          <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 8 }}>
+            Normalized from mentions + structured fields via an internal catalog (extend in core).
+          </p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {signals.stack_canonical_hits.map((id) => (
+              <span key={id} className="badge badge-amber" style={{ fontSize: 12, fontWeight: 400 }}>
+                {stackCatalogLabel(id)}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {signals.stack_mentions && signals.stack_mentions.length > 0 && (
+        <div className="mb-16">
+          <h3 className="mb-8">Stack mentions</h3>
+          <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+            {signals.stack_mentions.map((row, i) => (
+              <li key={i} style={{ marginBottom: 12 }}>
+                <strong style={{ fontSize: 13 }}>{row.mention}</strong>
+                {row.evidence?.length > 0 &&
+                  row.evidence.map((q, j) => (
+                    <blockquote key={j} className="evidence-quote">
+                      &ldquo;{q}&rdquo;
+                    </blockquote>
+                  ))}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
