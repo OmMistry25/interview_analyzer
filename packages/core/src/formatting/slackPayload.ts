@@ -22,6 +22,12 @@ function sentimentLabel(disposition: string): string {
   return map[disposition] ?? disposition;
 }
 
+/** True when we should show job title next to name (omit empty / literal "unknown"). */
+export function shouldShowParticipantTitle(title: string): boolean {
+  const t = title.trim();
+  return t.length > 0 && t.toLowerCase() !== "unknown";
+}
+
 export function formatGrowthTeamDigest(
   evaluation: EvaluationResult,
   signals: ExtractedSignals,
@@ -32,7 +38,11 @@ export function formatGrowthTeamDigest(
   const b = evaluation.bant_scores;
 
   const participantLines = signals.participant_titles
-    .map((p) => `• ${p.name} — ${p.title}`)
+    .map((p) =>
+      shouldShowParticipantTitle(p.title)
+        ? `• ${p.name} — ${p.title}`
+        : `• ${p.name}`
+    )
     .join("\n");
 
   const text = [

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { shouldShowParticipantTitle } from "@transcript-evaluator/core/src/formatting/slackPayload";
 
 interface BantScore {
   score: number;
@@ -241,7 +242,9 @@ function GrowthView({
     const titleInfo = participantTitles.find(
       (t) => t.name.toLowerCase() === p.name.toLowerCase()
     );
-    return titleInfo ? `${p.name} — ${titleInfo.title}` : p.name;
+    if (!titleInfo) return p.name;
+    if (!shouldShowParticipantTitle(titleInfo.title)) return p.name;
+    return `${p.name} — ${titleInfo.title}`;
   });
 
   return (
