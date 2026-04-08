@@ -22,6 +22,26 @@ import {
   persistEvaluation,
 } from "@transcript-evaluator/core/src/storage/repositories";
 
+/** Prefer LLM-extracted company (same source as dashboard); fall back to title parsing. */
+function resolveCallbackAccountName(
+  signals: ExtractedSignals,
+  prospectFromTitle: string | null
+): string | null {
+  const v = signals.account.company_name.value;
+  let candidate: string | null = null;
+  if (typeof v === "string") {
+    candidate = v.trim() || null;
+  } else if (typeof v === "number" && Number.isFinite(v)) {
+    candidate = String(v);
+  } else if (Array.isArray(v) && v.length > 0) {
+    candidate = v.map(String).join(", ").trim() || null;
+  }
+  if (candidate && candidate.toLowerCase() !== "unknown") {
+    return candidate;
+  }
+  return prospectFromTitle;
+}
+
 export async function processJob(
   db: SupabaseClient,
   job: { id: string; type: string; payload: Record<string, unknown> }
@@ -152,7 +172,7 @@ async function fireCallback(
 ): Promise<void> {
   const ctx = {
     aeName: meetingCtx.aeName,
-    accountName: meetingCtx.prospectCompany,
+    accountName: resolveCallbackAccountName(signals, meetingCtx.prospectCompany),
     meetingTitle: meetingCtx.meetingTitle,
   };
 
