@@ -245,15 +245,24 @@ export async function persistExtractedSignals(
     dealBriefJson?: unknown | null;
   }
 ): Promise<{ id: string }> {
-  const { data, error } = await db
-    .from("extracted_signals")
-    .insert({
-      processing_run_id: params.processingRunId,
-      call_id: params.callId,
-      signals_json: params.signalsJson,
-      quality_checks: params.qualityChecks ?? null,
-      deal_brief_json: params.dealBriefJson ?? null,
-    })
+  // Omit deal_brief_json entirely when undefined so DBs without the column still work (flag off).
+  const row: {
+    processing_run_id: string;
+    call_id: string;
+    signals_json: unknown;
+    quality_checks: unknown | null;
+    deal_brief_json?: unknown | null;
+  } = {
+    processing_run_id: params.processingRunId,
+    call_id: params.callId,
+    signals_json: params.signalsJson,
+    quality_checks: params.qualityChecks ?? null,
+  };
+  if (params.dealBriefJson !== undefined) {
+    row.deal_brief_json = params.dealBriefJson;
+  }
+
+  const { data, error } = await db.from("extracted_signals").insert(row)
     .select("id")
     .single();
 

@@ -11,6 +11,7 @@ import { runDailyExtraction, runBackfill, runWeeklyAnalysis } from "@transcript-
 import type { EvaluationResult } from "@transcript-evaluator/core/src/evaluation/schemas";
 import type { ExtractedSignals } from "@transcript-evaluator/core/src/extraction/schemas";
 import type { DealBrief } from "@transcript-evaluator/core/src/dealBrief/schemas";
+import { isDealBriefPipelineEnabled } from "@transcript-evaluator/core/src/config/featureFlags";
 import {
   getWebhookEvent,
   upsertCall,
@@ -127,21 +128,26 @@ async function processFathomMeeting(
     const signals = await extractSignals(normalized.utterances, meetingCtx);
     console.log("  Signals extracted.");
 
+    const briefEnabled = isDealBriefPipelineEnabled();
     let dealBrief: DealBrief | null = null;
-    try {
-      console.log("  Building AE deal brief...");
-      dealBrief = await extractDealBrief(normalized.utterances, meetingCtx, signals);
-      console.log("  Deal brief done.");
-    } catch (briefErr) {
-      const msg = briefErr instanceof Error ? briefErr.message : String(briefErr);
-      console.warn(`  Deal brief skipped: ${msg.slice(0, 200)}`);
+    if (briefEnabled) {
+      try {
+        console.log("  Building AE deal brief (DEAL_BRIEF_ENABLED=true)...");
+        dealBrief = await extractDealBrief(normalized.utterances, meetingCtx, signals);
+        console.log("  Deal brief done.");
+      } catch (briefErr) {
+        const msg = briefErr instanceof Error ? briefErr.message : String(briefErr);
+        console.warn(`  Deal brief failed: ${msg.slice(0, 200)}`);
+      }
+    } else {
+      console.log("  Deal brief pipeline off (set DEAL_BRIEF_ENABLED=true to enable).");
     }
 
     await persistExtractedSignals(db, {
       processingRunId: run.id,
       callId: call.id,
       signalsJson: signals,
-      dealBriefJson: dealBrief,
+      dealBriefJson: briefEnabled ? dealBrief : undefined,
     });
 
     console.log("  Evaluating (BANT)...");
@@ -367,21 +373,26 @@ async function reprocessCall(
     const signals = await extractSignals(utterances, meetingCtx);
     console.log("  Signals extracted.");
 
+    const briefEnabled = isDealBriefPipelineEnabled();
     let dealBrief: DealBrief | null = null;
-    try {
-      console.log("  Building AE deal brief...");
-      dealBrief = await extractDealBrief(utterances, meetingCtx, signals);
-      console.log("  Deal brief done.");
-    } catch (briefErr) {
-      const msg = briefErr instanceof Error ? briefErr.message : String(briefErr);
-      console.warn(`  Deal brief skipped: ${msg.slice(0, 200)}`);
+    if (briefEnabled) {
+      try {
+        console.log("  Building AE deal brief (DEAL_BRIEF_ENABLED=true)...");
+        dealBrief = await extractDealBrief(utterances, meetingCtx, signals);
+        console.log("  Deal brief done.");
+      } catch (briefErr) {
+        const msg = briefErr instanceof Error ? briefErr.message : String(briefErr);
+        console.warn(`  Deal brief failed: ${msg.slice(0, 200)}`);
+      }
+    } else {
+      console.log("  Deal brief pipeline off (set DEAL_BRIEF_ENABLED=true to enable).");
     }
 
     await persistExtractedSignals(db, {
       processingRunId: run.id,
       callId,
       signalsJson: signals,
-      dealBriefJson: dealBrief,
+      dealBriefJson: briefEnabled ? dealBrief : undefined,
     });
 
     console.log("  Evaluating (BANT)...");

@@ -12,6 +12,17 @@
 - **Zapier:** `raw.deal_brief` on the worker callback payload.
 - **Cost:** one additional OpenAI JSON call per processed call; failures on brief generation are logged and do not fail the run.
 
+### Feature flags (merge to main without changing prod behavior)
+
+| Variable | Where | When `true` |
+|----------|--------|-------------|
+| `DEAL_BRIEF_ENABLED` | **Railway worker** | Runs deal-brief LLM; passes brief to evaluator; includes `deal_brief_json` on insert (needs DB column). |
+| `NEXT_PUBLIC_DEAL_BRIEF_UI_ENABLED` | **Vercel** | Selects `deal_brief_json` and shows the **AE Brief** tab. |
+
+**Default:** omit both or set `false`. Worker **omits** `deal_brief_json` from inserts when disabled, so **no migration is required** until you turn the worker flag on.
+
+**Rollout:** (1) Merge code. (2) Prod stays unchanged with flags off. (3) Staging: run migration → `DEAL_BRIEF_ENABLED=true` on staging Railway → `NEXT_PUBLIC_DEAL_BRIEF_UI_ENABLED=true` on staging Vercel. (4) When happy: migrate prod, then enable both on prod.
+
 ## Follow-up work (tracked)
 
 - Optionally diff live `extracted_signals` + `evaluation_json` for a sample call against an AE-written brief.

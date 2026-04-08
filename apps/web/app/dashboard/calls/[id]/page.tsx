@@ -8,12 +8,14 @@ export const dynamic = "force-dynamic";
 export default async function CallDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createSupabaseServerClient();
+  const dealBriefUiEnabled = process.env.NEXT_PUBLIC_DEAL_BRIEF_UI_ENABLED === "true";
+  const signalsSelect = dealBriefUiEnabled ? "signals_json, deal_brief_json" : "signals_json";
 
   const [callRes, signalsRes, evalRes, participantsRes] = await Promise.all([
     supabase.from("calls").select("*").eq("id", id).single(),
     supabase
       .from("extracted_signals")
-      .select("signals_json, deal_brief_json")
+      .select(signalsSelect)
       .eq("call_id", id)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -41,7 +43,12 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
 
   const call = callRes.data;
   const signals = signalsRes.data?.signals_json as Record<string, unknown> | null;
-  const dealBrief = signalsRes.data?.deal_brief_json as Record<string, unknown> | null;
+  const dealBrief = dealBriefUiEnabled
+    ? ((signalsRes.data as { deal_brief_json?: unknown } | null)?.deal_brief_json as Record<
+        string,
+        unknown
+      > | null)
+    : null;
   const evaluation = evalRes.data?.evaluation_json as Record<string, unknown> | null;
   const participants = (participantsRes.data ?? []) as { name: string; role: string }[];
 
