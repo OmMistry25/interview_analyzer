@@ -69,7 +69,7 @@ Score each dimension based on BOTH what was uncovered AND the prospect's reactio
 
 ## Enterprise Adjustments (apply ONLY when Deal segment = enterprise)
 
-When the deal segment is "enterprise", adjust scoring as follows. Enterprise Stage 0 calls differ fundamentally from mid-tier: budget is rarely discussed, and the true decision maker is almost never on the first intro call.
+When the deal segment is "enterprise", adjust scoring as follows. Enterprise Stage 0 calls differ fundamentally from mid-tier: budget is rarely discussed, and **a single executive decision maker is almost never sufficient or present on the first call**. Real enterprise deals usually require **multiple senior stakeholders** (IT leadership, security, procurement/finance, business sponsor, etc.) to align over time — score **Authority** for **credible progress through that reality**, not for “we met the one person who can sign.”
 
 ### Enterprise Budget
 - 1: Not discussed — this is ACCEPTABLE and expected for enterprise Stage 0
@@ -77,15 +77,17 @@ When the deal segment is "enterprise", adjust scoring as follows. Enterprise Sta
 - 3+: Any pricing discussion with a non-negative reaction is a strong positive signal
 
 ### Enterprise Authority
-- 2: Only end users present, no mention of escalation path
-- 3: Prospect mentions escalating to a decision maker, scheduling a follow-up with leadership, or describes the internal approval chain — treat this as a POSITIVE signal for enterprise Stage 0
-- 4: Champion clearly identified and committed to internal advocacy or explicitly stated they will bring this to leadership
-- 5: Decision maker present on the call (rare for enterprise Stage 0 — score highly)
+Expect **multi-threaded buying**: several seniors or functions typically need to engage before a purchase. Do **not** treat “only one exec on the call” as the bar for a high score; treat **visibility into who else must be involved** and **concrete steps to pull them in** as success at Stage 0.
+
+- 2: Only end users present, no mention of escalation path or other required approvers/stakeholders
+- 3: Prospect mentions **escalation, follow-ups with leadership, security/procurement, steering committee, or a multi-step approval chain** — treat as a **strong** positive for enterprise Stage 0 (this is normal enterprise motion)
+- 4: Champion clearly identified and committed to **internal advocacy** — e.g. will brief CIO/VP, loop in security, or schedule a **multi-stakeholder** next step
+- 5: **One or more** senior leaders (or clear economic/technical buyers) on the call **and** a credible plan for the **remaining** required stakeholders — rare but excellent for Stage 0
 
 ### Enterprise Score Weighting
 For enterprise deals, weight the BANT dimensions differently:
 - Budget: 10% — rarely discussed at Stage 0
-- Authority: 20% — DM presence is uncommon
+- Authority: 20% — full buying committee is rarely mapped on call one; reward **path** and **multi-thread** signals
 - Need: 40% — most critical signal at Stage 0
 - Timing: 30% — momentum matters
 
@@ -93,7 +95,7 @@ Formula for enterprise: score = (budget * 2 + authority * 4 + need * 8 + timing 
 
 ### Enterprise Stage 1 Qualification
 - Budget threshold: Budget >= 1 (instead of >= 2) — budget silence is normal
-- Authority threshold: Authority >= 3 (same, but the rubric above is more lenient)
+- Authority threshold: Authority >= 3 — at enterprise this means **credible champion and/or path to the multiple seniors/functions** typically required, not “one DM locked”
 - Need and Timing thresholds: unchanged
 
 ## Holistic Evaluation Principles
@@ -116,7 +118,7 @@ These signals INCREASE confidence that the deal will progress. The more of these
 - **POC mentioned** (but not confirmed): Shows buying intent, prospect is thinking about evaluation.
 - **NDA mentioned**: Legal engagement signals serious evaluation, not just tire-kicking.
 - **Actively evaluating tools**: Demonstrates an active buying cycle — likely a "Sell S1".
-- **Multiple stakeholders present**: Signals active evaluation without needing deep pain discovery.
+- **Multiple stakeholders present**: Signals active evaluation without needing deep pain discovery. **Especially positive for enterprise**, where several seniors/functions often must align.
 - **Fast-growing team with high ticket volume**: Strong need signal for Console.
 
 ### Risk Signals (Red Flags)
@@ -146,7 +148,7 @@ Classify the deal into one of three categories:
 
 A call qualifies for Stage 1 (Demo Completed & Sales Qualified) when minimum BANT criteria are met:
 - Need score >= 3 (clear IT support pain identified that maps to Console)
-- Authority score >= 3 (champion or decision maker identified)
+- Authority score >= 3 (champion and/or decision-maker path identified — for **enterprise**, interpret as progress toward the **multiple** stakeholders usually required, not a single signer on day one)
 - Timing score >= 2 (some timeline awareness)
 
 Stage 1 probability should reflect your overall confidence that this deal will progress, considering ALL signals holistically — BANT scores, qualification signals, ICP fit, competitor context, and prospect sentiment.
@@ -159,7 +161,8 @@ Stage 1 probability should reflect your overall confidence that this deal will p
 - A call can justify **moderate or high** probability with **strong Need + Timing + momentum** even when Budget is still at 1–2 (e.g. pricing not yet discussed) **if** authority path is credible (champion engaged, follow-up with leadership agreed).
 
 **Enterprise (`Deal segment = enterprise`):**
-- **Budget and Authority carry less weight than Need and Timing** when setting `stage_1_probability` — same mental emphasis as the enterprise **score** weights below (Need and Timing matter most; budget silence and no DM on the first call are **normal**).
+- **Budget and Authority carry less weight than Need and Timing** when setting `stage_1_probability` — same mental emphasis as the enterprise **score** weights below (Need and Timing matter most; budget silence is **normal**).
+- **Do not** demand a single “fully mapped” decision maker for strong probability: enterprise wins usually require **several** seniors over time. Reward **clear next steps to multi-thread** (security, finance, IT leadership, etc.) as authority progress.
 - Budget = 1 and Authority = 3 remain **acceptable** Stage 0 outcomes. Do **not** cut probability for “expected enterprise gaps” when Need, Timing, or qualification signals are strong.
 
 ### Probability guidance (calibration bands)
@@ -190,7 +193,7 @@ Definitions:
 
 4. **next_steps_confirmed** — **yes** if a **calendar invite**, **specific date/time**, or **clear verbal commitment** to a concrete next step was made (e.g. "I'll send a invite," "let's book Wednesday," demo scheduled). **no** if only vague "we'll be in touch" / "circle back" with no commitment. **unclear** if next steps were not discussed.
 
-5. **stakeholder_access** — **yes** if there is a credible path to **power**: decision maker **named and on the call**, or **explicit plan with owner** to involve them (who, how, when). **no** if only junior contacts with no escalation path. **unclear** if authority was not discussed enough to tell.
+5. **stakeholder_access** — **yes** if there is a credible path to **power**: decision maker **named and on the call**, or **explicit plan with owner** to involve them (who, how, when). For **`Deal segment = enterprise`**, also **yes** if there is a credible plan to engage **multiple** required seniors/functions (IT leadership, security, procurement, etc.) even if the ultimate economic buyer is not on this call yet. **no** if only junior contacts with no escalation path. **unclear** if authority was not discussed enough to tell.
 
 **Consistency**: These answers should align with **s1_type**, **BANT scores**, and **stage_1_probability** where possible — the checklist should help explain the headline judgment, not contradict it without strong reason (if there is tension, note it briefly in the relevant rationale).
 
@@ -251,7 +254,11 @@ Tailor coaching based on prospect signal strength:
 - Focus on earning the second call — show more, ask less
 - Suggest positioning a custom demo around their top use cases
 - Recommend asking if they'll share recent ticket data to identify highest-impact automation opportunities
-- Push for a team-wide demo with the decision maker in the room
+- Push for a team-wide demo with decision makers in the room **when `Deal segment = mid_tier`**
+
+**Enterprise prospects** (large org; **several** seniors/functions usually required):
+- Coach the AE to **multi-thread**: name who else must engage (IT leadership, security, procurement/finance, business sponsor) and lock **joint** next steps — not a single “get the CIO” play
+- Encourage **multi-stakeholder** demos or sequenced meetings if signals support it
 
 **Weaker signal prospects** (mid-level manager, no clear buying cycle, uncertain stack):
 - Probe harder on need before advancing — understand their current IT support workflow
