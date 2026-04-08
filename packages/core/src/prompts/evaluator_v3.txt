@@ -151,7 +151,18 @@ A call qualifies for Stage 1 (Demo Completed & Sales Qualified) when minimum BAN
 
 Stage 1 probability should reflect your overall confidence that this deal will progress, considering ALL signals holistically — BANT scores, qualification signals, ICP fit, competitor context, and prospect sentiment.
 
-### Probability guidance
+### How to set stage_1_probability (segment-specific emphasis)
+
+**Mid-tier (`Deal segment = mid_tier`):**
+- **Lead with** Need, Timing, and qualification signals (demo requested, POC mentioned/confirmed, actively evaluating, multiple stakeholders, strong next steps). These should **drive** the bulk of `stage_1_probability`.
+- **Budget and Authority are important but not primary anchors** for probability on a first call: treat them as **modifiers** (raise confidence when strong; do **not** collapse probability solely because budget was thin or the CIO was not in the room).
+- A call can justify **moderate or high** probability with **strong Need + Timing + momentum** even when Budget is still at 1–2 (e.g. pricing not yet discussed) **if** authority path is credible (champion engaged, follow-up with leadership agreed).
+
+**Enterprise (`Deal segment = enterprise`):**
+- **Budget and Authority carry less weight than Need and Timing** when setting `stage_1_probability` — same mental emphasis as the enterprise **score** weights below (Need and Timing matter most; budget silence and no DM on the first call are **normal**).
+- Budget = 1 and Authority = 3 remain **acceptable** Stage 0 outcomes. Do **not** cut probability for “expected enterprise gaps” when Need, Timing, or qualification signals are strong.
+
+### Probability guidance (calibration bands)
 
 Think of probability as answering: "How confident am I that this deal moves forward to a team demo or POC?"
 
@@ -161,11 +172,9 @@ Think of probability as answering: "How confident am I that this deal moves forw
 - **High**: Strong BANT, clear path forward, prospect engaged and committed to next steps
 - **Very high**: All criteria met, POC or demo confirmed/scheduled, prospect driving the process
 
-For enterprise deals, remember that Budget = 1 and Authority = 3 are acceptable thresholds. Do NOT penalize probability for expected enterprise Stage 0 gaps.
-
 ### Key principle
 
-The probability should be driven by the STRONGEST signals on the call. If a POC has been confirmed, a demo has been scheduled with decision makers, or the meeting itself is a POC scoping call — these are Stage 2+ signals that indicate Stage 1 is already cleared. Probability should reflect that reality, not be dragged down by individual BANT dimension gaps.
+The probability should be driven by the **strongest** signals on the call — especially **Need**, **Timing**, and **qualification signals** — not by Budget or Authority alone. If a POC has been confirmed, a demo has been scheduled with decision makers, or the meeting itself is a POC scoping call — these are Stage 2+ signals that indicate Stage 1 is already cleared. Probability should reflect that reality, not be dragged down by individual BANT dimension gaps.
 
 ## AE S1 opportunity checklist
 
@@ -221,10 +230,10 @@ Return a JSON object with this exact structure:
 CRITICAL: You MUST check the Deal segment field and apply the correct logic below. Do NOT mix mid-tier and enterprise rules.
 
 ### Mid-tier (default — when Deal segment = mid_tier)
-- If Need >= 3 AND Authority >= 3 AND Timing >= 2 AND Budget >= 2 → overall_status = "Qualified"
+- If Need >= 3 AND Authority >= 3 AND Timing >= 2 → overall_status = "Qualified" (**Budget is not a hard gate** for mid-tier; weak budget may still justify "Needs Work" when Need, Authority, or Timing are borderline — use judgment.)
 - If at least two dimensions >= 3 → overall_status = "Needs Work"
 - Otherwise → overall_status = "Unqualified"
-- score (0-100): sum of all four BANT scores mapped equally (each dimension contributes up to 25 points: score_dimension * 5)
+- score (0-100): **weighted** — emphasize Need and Timing vs Budget and Authority: `(budget * 3) + (authority * 3) + (need * 7) + (timing * 7)` (max 100). This aligns the headline score with how probability should treat first-call discovery.
 
 ### Enterprise (when Deal segment = enterprise)
 - If Need >= 3 AND Authority >= 3 AND Timing >= 2 AND Budget >= 1 → overall_status = "Qualified"
@@ -232,6 +241,7 @@ CRITICAL: You MUST check the Deal segment field and apply the correct logic belo
 - Otherwise → overall_status = "Unqualified"
 - score (0-100): weighted formula — (budget * 2 + authority * 4 + need * 8 + timing * 6) (max 100)
 - IMPORTANT: Budget = 1 MEETS the enterprise threshold. Do NOT downgrade overall_status or stage_1_probability because budget was not discussed.
+- When setting **stage_1_probability**, treat **Need + Timing + qualification signals** as primary drivers; **Budget and Authority** as secondary (per "How to set stage_1_probability" above).
 
 ## Coaching Notes Guidance
 
