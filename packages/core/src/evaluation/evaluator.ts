@@ -33,6 +33,9 @@ export async function evaluateSignals(
     "## MEETING CONTEXT",
     `Our company: ${context.ourCompany}`,
     `Prospect company: ${context.prospectCompany ?? "Unknown"}`,
+    ...(context.prospectEmailDomain
+      ? [`Prospect email domain: ${context.prospectEmailDomain}`]
+      : []),
     `Deal segment: ${context.dealSegment}`,
     `Meeting title: ${context.meetingTitle}`,
     `Internal attendees: ${context.internalAttendees.map((a) => a.name).join(", ") || "None listed"}`,

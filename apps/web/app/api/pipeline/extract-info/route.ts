@@ -1,46 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { parseMeetingTitle, KNOWN_AES } from "@transcript-evaluator/core/src/ingestion/mapping";
+import {
+  extractProspectEmailDomainFromInvitees,
+  isOurEmailDomain,
+  prospectDomainFromSingleEmail,
+  resolveProspectDisplayName,
+} from "@transcript-evaluator/core/src/ingestion/prospectIdentity";
 import { authenticatePipeline } from "../_auth";
-
-const GENERIC_DOMAINS = new Set([
-  "gmail.com", "yahoo.com", "hotmail.com", "outlook.com",
-  "aol.com", "icloud.com", "protonmail.com", "mail.com",
-  "live.com", "msn.com", "ymail.com",
-]);
-
-const OUR_DOMAIN = "console.com";
-
-function isOurDomain(domain: string): boolean {
-  return domain === OUR_DOMAIN;
-}
-
-function domainFromEmail(email: string): string | null {
-  const domain = email.split("@")[1]?.toLowerCase().trim();
-  if (!domain) return null;
-  if (GENERIC_DOMAINS.has(domain)) return null;
-  if (isOurDomain(domain)) return null;
-  return domain;
-}
-
-function extractExternalDomain(
-  invitees: { email?: string; is_external?: boolean }[]
-): string | null {
-  for (const inv of invitees) {
-    if (!inv.is_external || !inv.email) continue;
-    const d = domainFromEmail(inv.email);
-    if (d) return d;
-  }
-  return null;
-}
-
-function extractDomainFromEmailList(csv: string): string | null {
-  const emails = csv.split(",").map((e) => e.trim()).filter(Boolean);
-  for (const email of emails) {
-    const d = domainFromEmail(email);
-    if (d) return d;
-  }
-  return null;
-}
 
 export async function POST(req: NextRequest) {
   const authErr = authenticatePipeline(req);
@@ -66,15 +32,28 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  let companyDomain = extractExternalDomain(invitees);
+  let companyDomain = extractProspectEmailDomainFromInvitees(invitees);
   if (!companyDomain && flatEmails) {
-    companyDomain = extractDomainFromEmailList(flatEmails);
+    const emails = flatEmails.split(",").map((e) => e.trim()).filter(Boolean);
+    for (const email of emails) {
+      const d = prospectDomainFromSingleEmail(email);
+      if (d) {
+        companyDomain = d;
+        break;
+      }
+    }
   }
 
   const companyNameFromTitle = parseMeetingTitle(title);
   const companyDomainGuess = companyNameFromTitle
     ? companyNameFromTitle.toLowerCase().replace(/[^a-z0-9]/g, "") + ".com"
     : null;
+
+  const company_name = resolveProspectDisplayName({
+    organizationNameFromEnrich: null,
+    titleParsedName: companyNameFromTitle,
+    emailDomain: companyDomain,
+  });
 
   const allNames: string[] = [];
   for (const inv of invitees) {
@@ -95,7 +74,7 @@ export async function POST(req: NextRequest) {
     if (flatEmails) {
       for (const e of flatEmails.split(",").map((s) => s.trim()).filter(Boolean)) {
         const d = e.split("@")[1]?.toLowerCase();
-        if (d && isOurDomain(d)) consoleEmails.push(e);
+        if (d && isOurEmailDomain(d)) consoleEmails.push(e);
       }
     }
     for (const email of consoleEmails) {
@@ -121,7 +100,7 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({
     company_domain: companyDomain,
     company_search_term: companySearchTerm,
-    company_name: companyNameFromTitle,
+    company_name,
     company_domain_guess: companyDomainGuess,
     ae_name: aeName,
     recording_id: recordingId,

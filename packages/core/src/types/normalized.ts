@@ -29,7 +29,10 @@ export interface NormalizedCall {
 export interface MeetingContext {
   meetingTitle: string;
   ourCompany: string;
+  /** Resolved display name: Apollo org name > title parse > domain label (set after enrichment in worker). */
   prospectCompany: string | null;
+  /** External attendee email domain(s) consensus, e.g. acme.com — used for Apollo enrich. */
+  prospectEmailDomain: string | null;
   aeName: string | null;
   dealSegment: "enterprise" | "mid_tier";
   internalAttendees: { name: string; email: string | null }[];

@@ -1,15 +1,17 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { isFathomMeeting } from "@transcript-evaluator/core/src/ingestion/fathomPayload";
 import { mapFathomToNormalized, buildMeetingContext, parseMeetingTitle, KNOWN_AES } from "@transcript-evaluator/core/src/ingestion/mapping";
+import { extractProspectEmailDomainFromParticipants, resolveProspectDisplayName } from "@transcript-evaluator/core/src/ingestion/prospectIdentity";
 import { extractSignals } from "@transcript-evaluator/core/src/extraction/extractor";
 import { extractDealBrief } from "@transcript-evaluator/core/src/dealBrief/extractor";
 import { evaluateSignals } from "@transcript-evaluator/core/src/evaluation/evaluator";
 import { crossCheckEvaluation } from "@transcript-evaluator/core/src/evaluation/rulesEngine";
-import { lookupCompanySize } from "@transcript-evaluator/core/src/enrichment/apollo";
+import { lookupCompanyEnrichment } from "@transcript-evaluator/core/src/enrichment/apollo";
 import { formatGrowthTeamDigest, formatAESlackMessage } from "@transcript-evaluator/core/src/formatting/slackPayload";
 import { runDailyExtraction, runBackfill, runWeeklyAnalysis } from "@transcript-evaluator/core/src/analysis/geoAnalysisPipeline";
 import type { EvaluationResult } from "@transcript-evaluator/core/src/evaluation/schemas";
 import type { ExtractedSignals } from "@transcript-evaluator/core/src/extraction/schemas";
+import type { MeetingContext } from "@transcript-evaluator/core/src/types/normalized";
 import type { DealBrief } from "@transcript-evaluator/core/src/dealBrief/schemas";
 import { isDealBriefPipelineEnabled } from "@transcript-evaluator/core/src/config/featureFlags";
 import {
@@ -119,10 +121,22 @@ async function processFathomMeeting(
 
   try {
     const meetingCtx = buildMeetingContext(normalized);
+    const titleParsed = meetingCtx.prospectCompany;
 
-    const enrichment = await lookupCompanySize(meetingCtx.prospectCompany);
+    const enrichment = await lookupCompanyEnrichment({
+      prospectEmailDomain: meetingCtx.prospectEmailDomain,
+      titleParsedCompanyName: titleParsed,
+    });
     meetingCtx.dealSegment = enrichment.segment;
-    console.log(`  Deal segment: ${enrichment.segment} (employees: ${enrichment.employeeCount ?? "unknown"})`);
+    meetingCtx.prospectCompany = resolveProspectDisplayName({
+      organizationNameFromEnrich: enrichment.organizationName,
+      titleParsed,
+      emailDomain: meetingCtx.prospectEmailDomain,
+    });
+    console.log(
+      `  Deal segment: ${enrichment.segment} (employees: ${enrichment.employeeCount ?? "unknown"})` +
+        (meetingCtx.prospectEmailDomain ? ` · domain: ${meetingCtx.prospectEmailDomain}` : "")
+    );
 
     console.log(`  Extracting signals... (prospect: ${meetingCtx.prospectCompany ?? "unknown"})`);
     const signals = await extractSignals(normalized.utterances, meetingCtx);
@@ -187,7 +201,7 @@ async function fireCallback(
   url: string,
   evaluation: EvaluationResult,
   signals: ExtractedSignals,
-  meetingCtx: { meetingTitle: string; prospectCompany: string | null; aeName: string | null },
+  meetingCtx: MeetingContext,
   dealBrief: DealBrief | null
 ): Promise<void> {
   const ctx = {
@@ -341,13 +355,27 @@ async function reprocessCall(
     KNOWN_AES.some((ae: string) => a.name.toLowerCase().includes(ae.toLowerCase()))
   );
 
-  const prospectCompany = parseMeetingTitle(call.title as string);
-  const enrichment = await lookupCompanySize(prospectCompany);
+  const participantRows = (participants ?? []).map((p) => ({
+    email: (p.email as string) ?? null,
+    role: p.role as "ae" | "prospect" | "unknown",
+  }));
+  const prospectEmailDomain = extractProspectEmailDomainFromParticipants(participantRows);
+  const titleParsed = parseMeetingTitle(call.title as string);
+  const enrichment = await lookupCompanyEnrichment({
+    prospectEmailDomain,
+    titleParsedCompanyName: titleParsed,
+  });
+  const prospectCompany = resolveProspectDisplayName({
+    organizationNameFromEnrich: enrichment.organizationName,
+    titleParsed,
+    emailDomain: prospectEmailDomain,
+  });
 
   const meetingCtx = {
     meetingTitle: call.title as string,
     ourCompany: "Console",
     prospectCompany,
+    prospectEmailDomain,
     aeName: knownAE?.name ?? internalAttendees[0]?.name ?? null,
     dealSegment: enrichment.segment,
     internalAttendees,
@@ -355,7 +383,10 @@ async function reprocessCall(
       .filter((p) => p.role === "prospect")
       .map((p) => ({ name: p.name as string, email: (p.email as string) ?? null })),
   };
-  console.log(`  Deal segment: ${enrichment.segment} (employees: ${enrichment.employeeCount ?? "unknown"})`);
+  console.log(
+    `  Deal segment: ${enrichment.segment} (employees: ${enrichment.employeeCount ?? "unknown"})` +
+      (prospectEmailDomain ? ` · domain: ${prospectEmailDomain}` : "")
+  );
 
   const run = await createProcessingRun(db, {
     callId,

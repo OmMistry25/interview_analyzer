@@ -2,29 +2,41 @@ export type DealSegment = "enterprise" | "mid_tier";
 
 const ENTERPRISE_THRESHOLD = 2000;
 
-interface ApolloEnrichmentResult {
+export interface CompanyEnrichmentResult {
   employeeCount: number | null;
   segment: DealSegment;
+  /** Apollo organization name when enrich succeeds */
+  organizationName: string | null;
 }
 
-function guessDomain(companyName: string): string {
+function guessDomainFromCompanyName(companyName: string): string {
   return companyName.toLowerCase().replace(/[^a-z0-9]/g, "") + ".com";
 }
 
-export async function lookupCompanySize(
-  companyName: string | null
-): Promise<ApolloEnrichmentResult> {
-  const fallback: ApolloEnrichmentResult = { employeeCount: null, segment: "mid_tier" };
+/**
+ * Enrich company by email domain when available (accurate); otherwise guess domain from title-parsed name.
+ */
+export async function lookupCompanyEnrichment(params: {
+  prospectEmailDomain: string | null;
+  titleParsedCompanyName: string | null;
+}): Promise<CompanyEnrichmentResult> {
+  const fallback: CompanyEnrichmentResult = {
+    employeeCount: null,
+    segment: "mid_tier",
+    organizationName: null,
+  };
 
-  if (!companyName) return fallback;
+  const domain =
+    params.prospectEmailDomain?.trim() ||
+    (params.titleParsedCompanyName ? guessDomainFromCompanyName(params.titleParsedCompanyName) : null);
+
+  if (!domain) return fallback;
 
   const apiKey = process.env.APOLLO_API_KEY;
   if (!apiKey) {
     console.warn("  APOLLO_API_KEY not set — defaulting to mid_tier");
     return fallback;
   }
-
-  const domain = guessDomain(companyName);
 
   try {
     const res = await fetch(
@@ -37,18 +49,30 @@ export async function lookupCompanySize(
       return fallback;
     }
 
-    const data = await res.json();
-    const employeeCount: number | null =
-      data?.organization?.estimated_num_employees ?? null;
+    const data = (await res.json()) as {
+      organization?: { estimated_num_employees?: number; name?: string };
+    };
+
+    const employeeCount: number | null = data?.organization?.estimated_num_employees ?? null;
+    const organizationName: string | null =
+      typeof data?.organization?.name === "string" && data.organization.name.trim()
+        ? data.organization.name.trim()
+        : null;
 
     const segment: DealSegment =
-      employeeCount != null && employeeCount >= ENTERPRISE_THRESHOLD
-        ? "enterprise"
-        : "mid_tier";
+      employeeCount != null && employeeCount >= ENTERPRISE_THRESHOLD ? "enterprise" : "mid_tier";
 
-    return { employeeCount, segment };
+    return { employeeCount, segment, organizationName };
   } catch (err) {
     console.warn(`  Apollo enrichment failed for ${domain}:`, err);
     return fallback;
   }
+}
+
+/** @deprecated Use lookupCompanyEnrichment; kept for any external callers passing name-only. */
+export async function lookupCompanySize(companyName: string | null): Promise<CompanyEnrichmentResult> {
+  return lookupCompanyEnrichment({
+    prospectEmailDomain: null,
+    titleParsedCompanyName: companyName,
+  });
 }

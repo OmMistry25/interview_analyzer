@@ -1,6 +1,7 @@
 import { FathomMeeting } from "./fathomPayload";
 import { normalizeText } from "./normalize";
 import { NormalizedCall, NormalizedParticipant, NormalizedUtterance, MeetingContext } from "../types/normalized";
+import { extractProspectEmailDomainFromParticipants } from "./prospectIdentity";
 
 function parseTimestampToSec(ts: string): number | null {
   // "HH:MM:SS" → total seconds
@@ -111,10 +112,14 @@ export function buildMeetingContext(call: NormalizedCall): MeetingContext {
 
   const knownAE = internalAttendees.find((a) => isKnownAE(a.name));
 
+  const titleCompany = parseMeetingTitle(call.title);
+  const prospectEmailDomain = extractProspectEmailDomainFromParticipants(call.participants);
+
   return {
     meetingTitle: call.title,
     ourCompany: OUR_COMPANY,
-    prospectCompany: parseMeetingTitle(call.title),
+    prospectCompany: titleCompany,
+    prospectEmailDomain,
     aeName: knownAE?.name ?? internalAttendees[0]?.name ?? null,
     dealSegment: "mid_tier",
     internalAttendees,

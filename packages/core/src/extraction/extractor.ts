@@ -15,6 +15,10 @@ export function buildMetadataBlock(ctx: MeetingContext): string {
     `Prospect company: ${ctx.prospectCompany ?? "Unknown (extract from transcript)"}`,
   ];
 
+  if (ctx.prospectEmailDomain) {
+    lines.push(`Prospect company email domain (external attendees): ${ctx.prospectEmailDomain}`);
+  }
+
   if (ctx.internalAttendees.length > 0) {
     lines.push("Internal attendees (our team):");
     for (const a of ctx.internalAttendees) {
