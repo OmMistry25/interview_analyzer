@@ -44,14 +44,17 @@ Score each dimension based on BOTH what was uncovered AND the prospect's reactio
 - 4: Pricing discussed, prospect receptive (disposition = positive/neutral), budget roughly aligned with $10/user/mo, approval process understood
 - 5: Budget confirmed and allocated, prospect comfortable with Console's pricing, clear path to purchase approval
 
-### Authority (score on ENGAGEMENT, not just identification)
-- 1: No decision maker identified, unclear who makes decisions
-- 2: Decision maker identified but not engaged, or spoke only with end user who has no influence (disposition = negative/cautious)
-- 3: Champion identified and somewhat engaged, but decision maker (CIO/VP/Director of IT) not yet involved or sentiment unclear
-- 4: Decision maker identified and supportive, buying process understood, champion actively advocating (disposition = positive)
-- 5: Decision maker (CIO/VP/Director of IT) present on the call, clearly engaged, and driving the evaluation forward
+### Authority (score on ENGAGEMENT and **proven influence**, not title inflation)
 
-**Champion proxy for Stage 0**: Since champion can rarely be confirmed on the first call, use this proxy — seniority of contact (IT Manager+) combined with willingness to schedule next steps with their team live on the call.
+Use **participant_titles.role_in_deal** from EXTRACTED SIGNALS. Team standard: **below Director+** contacts default to **`coach`** unless they meet the **champion** bar (named approver **and** concrete commitment — date/time or scheduled meeting — to involve them). **`champion_identified`** should only be true when that bar is met or a **Director+** contact is clearly mobilizing internally.
+
+- 1: No decision maker path, unclear who makes decisions, or only **coach**/**end_user** contacts with no escalation story
+- 2: **Coach**-level contact only — cannot name who approves, vague on evaluation, or disposition = negative/cautious with no path to power
+- 3: Credible path emerging: **champion** criteria partially met, **or** Director+ engaged but DM not yet in room, **or** named approver + some (not yet fully concrete) next step — sentiment neutral or better
+- 4: **Champion** proven (named boss/approver + concrete commitment to loop them in) **or** decision maker identified and supportive with buying process understood (disposition = positive)
+- 5: Decision maker (CIO/VP/Director of IT or equivalent) **on the call** and driving, **or** **champion** bar fully met with strong multi-thread plan
+
+**Do not** treat “IT Manager agreed to follow up” alone as a **champion** without **named power** and **specific** commitment to bring them in — that pattern caps Authority lower until proven.
 
 ### Need (score on FIT WITH CONSOLE, not just pain existence)
 - 1: No IT support pain points or needs identified
@@ -77,12 +80,12 @@ When the deal segment is "enterprise", adjust scoring as follows. Enterprise Sta
 - 3+: Any pricing discussion with a non-negative reaction is a strong positive signal
 
 ### Enterprise Authority
-Expect **multi-threaded buying**: several seniors or functions typically need to engage before a purchase. Do **not** treat “only one exec on the call” as the bar for a high score; treat **visibility into who else must be involved** and **concrete steps to pull them in** as success at Stage 0.
+Expect **multi-threaded buying**: several seniors or functions typically need to engage before a purchase. Apply the same **coach vs champion** standard: **coach**-only attendees need **named** stakeholders and **dated/scheduled** steps to rate highly.
 
-- 2: Only end users present, no mention of escalation path or other required approvers/stakeholders
-- 3: Prospect mentions **escalation, follow-ups with leadership, security/procurement, steering committee, or a multi-step approval chain** — treat as a **strong** positive for enterprise Stage 0 (this is normal enterprise motion)
-- 4: Champion clearly identified and committed to **internal advocacy** — e.g. will brief CIO/VP, loop in security, or schedule a **multi-stakeholder** next step
-- 5: **One or more** senior leaders (or clear economic/technical buyers) on the call **and** a credible plan for the **remaining** required stakeholders — rare but excellent for Stage 0
+- 2: Only **coach**/**end_user** contacts, no named approvers, no concrete plan to involve leadership or security/procurement
+- 3: **Named** additional stakeholders (person or role) **and** some concrete next step toward them — or classic enterprise signals (steering committee, approval chain) with specifics
+- 4: **Champion** bar met per extracted signals — named approver + commitment to meeting/briefing **with specificity** (date/time or calendared), **or** Director+ driving multi-thread
+- 5: Senior economic/technical buyer on the call **plus** credible plan for remaining required functions — rare excellent Stage 0
 
 ### Enterprise Score Weighting
 For enterprise deals, weight the BANT dimensions differently:
@@ -95,7 +98,7 @@ Formula for enterprise: score = (budget * 2 + authority * 4 + need * 8 + timing 
 
 ### Enterprise Stage 1 Qualification
 - Budget threshold: Budget >= 1 (instead of >= 2) — budget silence is normal
-- Authority threshold: Authority >= 3 — at enterprise this means **credible champion and/or path to the multiple seniors/functions** typically required, not “one DM locked”
+- Authority threshold: Authority >= 3 — **named** path toward power and **concrete** next steps (not coach-only with vague intent)
 - Need and Timing thresholds: unchanged
 
 ## Holistic Evaluation Principles
@@ -124,6 +127,7 @@ These signals INCREASE confidence that the deal will progress. The more of these
 ### Risk Signals (Red Flags)
 
 These signals REDUCE confidence. Weigh them against the green flags — a single red flag should not tank a deal that has strong positive signals:
+- **Coach-only / no proven champion**: All prospect `participant_titles` are **coach** or **end_user**, **`champion_identified`** is false, and no one names who approves or commits to a dated step — AE must earn a real champion on the next call.
 - **No full-time IT person** (and no strong compensating signals like budget/timeline/demo): Usually means the company isn't ready for Console yet.
 - **Uses MSP for IT support**: Timeline typically deferred. But if the MSP itself is the prospect exploring Console for their clients, evaluate the specific use case.
 - **No Slack AND no Teams**: Prospect needs at least one of these for Console to work. Having neither is a significant blocker.
@@ -148,7 +152,7 @@ Classify the deal into one of three categories:
 
 A call qualifies for Stage 1 (Demo Completed & Sales Qualified) when minimum BANT criteria are met:
 - Need score >= 3 (clear IT support pain identified that maps to Console)
-- Authority score >= 3 (champion and/or decision-maker path identified — for **enterprise**, interpret as progress toward the **multiple** stakeholders usually required, not a single signer on day one)
+- Authority score >= 3 (**champion** bar or **Director+** mobilization or decision-maker path — **not** coach-only with vague follow-up)
 - Timing score >= 2 (some timeline awareness)
 
 Stage 1 probability should reflect your overall confidence that this deal will progress, considering ALL signals holistically — BANT scores, qualification signals, ICP fit, competitor context, and prospect sentiment.
@@ -158,7 +162,7 @@ Stage 1 probability should reflect your overall confidence that this deal will p
 **Mid-tier (`Deal segment = mid_tier`):**
 - **Lead with** Need, Timing, and qualification signals (demo requested, POC mentioned/confirmed, actively evaluating, multiple stakeholders, strong next steps). These should **drive** the bulk of `stage_1_probability`.
 - **Budget and Authority are important but not primary anchors** for probability on a first call: treat them as **modifiers** (raise confidence when strong; do **not** collapse probability solely because budget was thin or the CIO was not in the room).
-- A call can justify **moderate or high** probability with **strong Need + Timing + momentum** even when Budget is still at 1–2 (e.g. pricing not yet discussed) **if** authority path is credible (champion engaged, follow-up with leadership agreed).
+- A call can justify **moderate or high** probability with **strong Need + Timing + momentum** even when Budget is still at 1–2 (e.g. pricing not yet discussed) **if** authority path is credible per **champion**/**Director+** rules — not merely a **coach** saying they’ll “circle back.”
 
 **Enterprise (`Deal segment = enterprise`):**
 - **Budget and Authority carry less weight than Need and Timing** when setting `stage_1_probability` — same mental emphasis as the enterprise **score** weights below (Need and Timing matter most; budget silence is **normal**).
@@ -193,7 +197,7 @@ Definitions:
 
 4. **next_steps_confirmed** — **yes** if a **calendar invite**, **specific date/time**, or **clear verbal commitment** to a concrete next step was made (e.g. "I'll send a invite," "let's book Wednesday," demo scheduled). **no** if only vague "we'll be in touch" / "circle back" with no commitment. **unclear** if next steps were not discussed.
 
-5. **stakeholder_access** — **yes** if there is a credible path to **power**: decision maker **named and on the call**, or **explicit plan with owner** to involve them (who, how, when). For **`Deal segment = enterprise`**, also **yes** if there is a credible plan to engage **multiple** required seniors/functions (IT leadership, security, procurement, etc.) even if the ultimate economic buyer is not on this call yet. **no** if only junior contacts with no escalation path. **unclear** if authority was not discussed enough to tell.
+5. **stakeholder_access** — **yes** if there is a credible path to **power**: decision maker **named and on the call**, or **explicit plan with owner** to involve them (who, how, when), including **named date/time or calendared step** when the contact is **coach**-level (below Director+). **no** if everyone is **coach**/**end_user** with no named approver and no concrete escalation. For **`Deal segment = enterprise`**, also **yes** if there is a credible plan to engage **multiple** required seniors/functions even if the economic buyer is not on this call yet. **unclear** if authority was not discussed enough to tell.
 
 **Consistency**: These answers should align with **s1_type**, **BANT scores**, and **stage_1_probability** where possible — the checklist should help explain the headline judgment, not contradict it without strong reason (if there is tension, note it briefly in the relevant rationale).
 

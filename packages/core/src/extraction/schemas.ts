@@ -101,7 +101,14 @@ const qualificationSignalsSchema = z.object({
 const participantTitleSchema = z.object({
   name: z.string(),
   title: z.string(),
-  role_in_deal: z.enum(["decision_maker", "champion", "evaluator", "end_user", "unknown"]),
+  role_in_deal: z.enum([
+    "decision_maker",
+    "champion",
+    "coach",
+    "evaluator",
+    "end_user",
+    "unknown",
+  ]),
 });
 
 const stackMentionSchema = z.object({

@@ -24,8 +24,9 @@ Console is an AI-powered IT support automation platform. It auto-resolves IT req
 - ITSM: Jira, FreshService, Zendesk, Linear, ServiceNow
 - Sweet spot: orgs where ~10+ IT support people service internal requests
 
-**Decision Maker titles**: CIO, VP of IT, Director/Head of IT (anyone who owns the IT budget)
-**Champion titles**: VP/Director/Head of IT, IT Manager, Service Desk Manager, TechOps Lead, Technical Lead
+**Decision maker titles** (economic buyer / budget owner on IT): CIO, VP of IT, Director or Head of IT (and comparable C-suite owning IT budget).
+
+**Director+ band** (for classifying prospect influence — titles at or above this level are **not** defaulted to **coach**): Director, Sr Director, Associate Director (when clearly senior), Head of, VP, SVP, EVP, Chief*, C*O, General Manager (when clearly P&L/divisional). Titles like Manager, Lead (without Director+ scope), Specialist, Analyst, Coordinator, Administrator, Technician, “minion” operational roles are **below** this band unless the transcript explicitly states broader authority.
 
 **Competitors — three buckets:**
 - AI-native ITSM: Aisera, Rezolve, Serv, Moveworks (now acquired by ServiceNow), Harmoni
@@ -42,7 +43,25 @@ Console is an AI-powered IT support automation platform. It auto-resolves IT req
 - If information is NOT stated or is ambiguous, set the value to "unknown" (for strings/numbers) or false (for booleans) and leave evidence as an empty array.
 - NEVER guess or infer beyond what is explicitly stated.
 - For boolean fields: use true with evidence if explicitly discussed, false with empty evidence if not mentioned at all.
-- **Participant titles**: Extract job titles or roles from how people introduce themselves in the transcript (e.g., "I'm the VP of Engineering" or "I lead the IT team"). If no title is mentioned for a participant, omit them from the array. Use the Console persona context above to classify their role_in_deal accurately.
+- **Participant titles**: Extract job titles or roles from how people introduce themselves in the transcript. If no title is mentioned for a participant, omit them from the array. Classify `role_in_deal` using the **Prospect authority** section below (coach vs champion vs decision maker).
+
+## Prospect authority: coach vs champion vs decision maker (participant_titles.role_in_deal)
+
+Use these rules for each **prospect-side** participant in `participant_titles`:
+
+- **`coach`** (**default** when title is **below Director+**): Internal helper on the call who has **not proven** buying influence. Assume **coach** for Manager/Lead/Specialist/Analyst-level titles unless the transcript proves **champion** criteria below.
+
+- **`champion`**: Only if **power and influence are proven**. Require **both**: (1) they **name a specific** person above them who owns or approves the decision (boss, CIO, VP, steering committee, etc.), **and** (2) they **commit concretely** to involving that person — e.g. a scheduled or scheduling meeting, **named date and/or time** to brief them, or an explicit calendar commitment — **not** vague “I’ll run it up the chain” or “I’ll ask my manager” with no names and no concrete plan.
+
+- **`decision_maker`**: They **own** the decision or budget per transcript evidence (or match **Decision maker titles** in product context).
+
+- **`end_user`**: Operational contact with **no** internal selling role and **no** evaluation ownership described — cannot name who else is involved and gives **no** substantive detail on how evaluation works.
+
+- **`evaluator`**: Formal technical/process assessor without champion proof.
+
+- **`unknown`**: Insufficient to classify.
+
+**`champion_identified` (authority section)**: **true** only if at least one prospect qualifies as **`champion`** per the bar above, **or** a **Director+** prospect is **clearly driving** the evaluation with evidence of internal mobilization. Otherwise **false** (including when contacts are **coach** / **end_user** only).
 
 ## Budget Extraction (Critical)
 
@@ -163,7 +182,7 @@ Return a JSON object with this exact structure:
     "competitor_is_active_customer": <boolean>
   },
   "participant_titles": [
-    { "name": "<participant name>", "title": "<job title>", "role_in_deal": "<decision_maker|champion|evaluator|end_user|unknown>" }
+    { "name": "<participant name>", "title": "<job title>", "role_in_deal": "<decision_maker|champion|coach|evaluator|end_user|unknown>" }
   ],
   "call_summary": "<2-3 sentence summary of what was discussed on the call>",
   "stack_mentions": [
