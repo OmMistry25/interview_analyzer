@@ -167,6 +167,24 @@ For enterprise deals, remember that Budget = 1 and Authority = 3 are acceptable 
 
 The probability should be driven by the STRONGEST signals on the call. If a POC has been confirmed, a demo has been scheduled with decision makers, or the meeting itself is a POC scoping call — these are Stage 2+ signals that indicate Stage 1 is already cleared. Probability should reflect that reality, not be dragged down by individual BANT dimension gaps.
 
+## AE S1 opportunity checklist
+
+Answer each item with **yes**, **no**, or **unclear** (use **unclear** when the transcript/signals do not support a confident yes or no — do not invent). Give a **one-sentence rationale** per item, grounded in EXTRACTED SIGNALS and (if present) the AE DEAL BRIEF. Optionally add up to **two short verbatim evidence_quotes** per item when they strengthen the answer.
+
+Definitions:
+
+1. **active_project_or_initiative** — **yes** if there is a named initiative, formal eval/replacement program, budget/process discussion tied to a project, or explicit near-term intent to solve a specific problem (not pure curiosity). **no** if the call is clearly exploratory with no buying or project context. **unclear** if not enough was discussed.
+
+2. **defined_timeline** — **yes** if there is a rough window for **completing an eval** or **making a vendor decision** (month, quarter, renewal, headcount event, compliance date, etc.). **no** if only vague "someday" / no time horizon. **unclear** if timing was not discussed.
+
+3. **clear_pain** — **yes** if there is IT/support pain that **Console’s product** plausibly addresses (ticket volume, manual access/password work, KB deflection, service desk load, etc.). **no** if pain is absent, unrelated to Console’s motion, or purely hypothetical. **unclear** if pain was not surfaced.
+
+4. **next_steps_confirmed** — **yes** if a **calendar invite**, **specific date/time**, or **clear verbal commitment** to a concrete next step was made (e.g. "I'll send a invite," "let's book Wednesday," demo scheduled). **no** if only vague "we'll be in touch" / "circle back" with no commitment. **unclear** if next steps were not discussed.
+
+5. **stakeholder_access** — **yes** if there is a credible path to **power**: decision maker **named and on the call**, or **explicit plan with owner** to involve them (who, how, when). **no** if only junior contacts with no escalation path. **unclear** if authority was not discussed enough to tell.
+
+**Consistency**: These answers should align with **s1_type**, **BANT scores**, and **stage_1_probability** where possible — the checklist should help explain the headline judgment, not contradict it without strong reason (if there is tension, note it briefly in the relevant rationale).
+
 ## Output Format
 
 Return a JSON object with this exact structure:
@@ -188,7 +206,14 @@ Return a JSON object with this exact structure:
   "call_notes": "<concise paragraph summarizing the call for the growth team>",
   "coaching_notes": ["<actionable suggestion 1>", "<actionable suggestion 2>", "<actionable suggestion 3>"],
   "next_steps": ["<agreed next step from the call>"],
-  "score": <integer 0-100>
+  "score": <integer 0-100>,
+  "s1_opportunity_checklist": {
+    "active_project_or_initiative": { "answer": "<yes|no|unclear>", "rationale": "<one sentence>", "evidence_quotes": ["<optional verbatim quote>"] },
+    "defined_timeline": { "answer": "<yes|no|unclear>", "rationale": "<one sentence>", "evidence_quotes": [] },
+    "clear_pain": { "answer": "<yes|no|unclear>", "rationale": "<one sentence>", "evidence_quotes": [] },
+    "next_steps_confirmed": { "answer": "<yes|no|unclear>", "rationale": "<one sentence>", "evidence_quotes": [] },
+    "stakeholder_access": { "answer": "<yes|no|unclear>", "rationale": "<one sentence>", "evidence_quotes": [] }
+  }
 }
 
 ## Decision Logic
@@ -226,6 +251,7 @@ Tailor coaching based on prospect signal strength:
 
 IMPORTANT:
 - Return ONLY valid JSON, no markdown formatting.
+- Do **not** include `s1_checklist_yes_count` in your JSON; it is computed by the system from your checklist answers.
 - Base your evaluation strictly on the provided extracted signals.
 - Do not invent or assume information not in the signals.
 - USE the prospect_sentiment and budget_alignment fields to contextualize scores. A topic being discussed in detail does NOT mean a high score — the prospect's reaction determines the score.

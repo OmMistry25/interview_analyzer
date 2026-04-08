@@ -2,6 +2,11 @@ import { ExtractedSignals } from "../extraction/schemas";
 import { EvaluationResult } from "./schemas";
 import type { DealSegment } from "../enrichment/apollo";
 
+/**
+ * BANT-based sanity check only. We intentionally do **not** override `overall_status` from
+ * `s1_opportunity_checklist` / `s1_checklist_yes_count` until AE calibration (e.g. logging when
+ * yes_count >= 3 but s1_type is not_s1) can be reviewed.
+ */
 export function crossCheckEvaluation(
   _signals: ExtractedSignals,
   evaluation: EvaluationResult,

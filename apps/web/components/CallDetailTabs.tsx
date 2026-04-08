@@ -9,6 +9,22 @@ interface BantScore {
   rationale: string;
 }
 
+type S1ChecklistAnswer = "yes" | "no" | "unclear";
+
+interface S1ChecklistItemJson {
+  answer: S1ChecklistAnswer;
+  rationale: string;
+  evidence_quotes?: string[];
+}
+
+interface S1OpportunityChecklistJson {
+  active_project_or_initiative: S1ChecklistItemJson;
+  defined_timeline: S1ChecklistItemJson;
+  clear_pain: S1ChecklistItemJson;
+  next_steps_confirmed: S1ChecklistItemJson;
+  stakeholder_access: S1ChecklistItemJson;
+}
+
 interface EvaluationJson {
   bant_scores: {
     budget: BantScore;
@@ -24,9 +40,23 @@ interface EvaluationJson {
   green_flags?: string[];
   red_flags?: string[];
   call_notes: string;
-  coaching_notes: string[];
-  next_steps: string[];
+  coaching_notes?: string[];
+  next_steps?: string[];
   score: number;
+  s1_opportunity_checklist?: S1OpportunityChecklistJson;
+  s1_checklist_yes_count?: number;
+}
+
+const S1_CHECKLIST_ROWS: { key: keyof S1OpportunityChecklistJson; label: string }[] = [
+  { key: "active_project_or_initiative", label: "Active project or initiative" },
+  { key: "defined_timeline", label: "Defined timeline (eval / decision)" },
+  { key: "clear_pain", label: "Clear pain (Console fit)" },
+  { key: "next_steps_confirmed", label: "Next steps scheduled or verbally confirmed" },
+  { key: "stakeholder_access", label: "Stakeholder access" },
+];
+
+function s1ChecklistYesCountFromRows(checklist: S1OpportunityChecklistJson): number {
+  return S1_CHECKLIST_ROWS.filter(({ key }) => checklist[key].answer === "yes").length;
 }
 
 interface SignalField {
@@ -284,6 +314,53 @@ function AEView({
             {evaluation.stage_1_reasoning}
           </p>
 
+          {evaluation.s1_opportunity_checklist && (
+            <div className="mb-20">
+              <h3 className="section-title">S1 opportunity checklist</h3>
+              <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 12 }}>
+                <strong>
+                  {evaluation.s1_checklist_yes_count ?? s1ChecklistYesCountFromRows(evaluation.s1_opportunity_checklist)}
+                  /5
+                </strong>{" "}
+                yes — heuristic scan (unclear counts as not yes).
+              </p>
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th style={{ width: "32%" }}>Question</th>
+                    <th style={{ width: "12%" }}>Answer</th>
+                    <th>Rationale & evidence</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {S1_CHECKLIST_ROWS.map(({ key, label }) => {
+                    const row = evaluation.s1_opportunity_checklist![key];
+                    return (
+                      <tr key={key}>
+                        <td style={{ fontWeight: 500 }}>{label}</td>
+                        <td>
+                          <span className={`badge ${s1ChecklistAnswerBadgeClass(row.answer)}`} style={{ fontSize: 11, fontWeight: 500 }}>
+                            {row.answer}
+                          </span>
+                        </td>
+                        <td>
+                          <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>{row.rationale}</span>
+                          {row.evidence_quotes && row.evidence_quotes.length > 0
+                            ? row.evidence_quotes.map((q, i) => (
+                                <blockquote key={i} className="evidence-quote">
+                                  &ldquo;{q}&rdquo;
+                                </blockquote>
+                              ))
+                            : null}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+
           <h3 className="section-title">BANT Scores</h3>
           <div className="bant-grid">
             {(["budget", "authority", "need", "timing"] as const).map((dim) => {
@@ -325,22 +402,22 @@ function AEView({
             </div>
           ) : null}
 
-          {evaluation.coaching_notes.length > 0 && (
+          {(evaluation.coaching_notes?.length ?? 0) > 0 && (
             <div className="mt-20">
               <h3 className="section-title">Coaching Notes</h3>
               <ul className="list-clean">
-                {evaluation.coaching_notes.map((note, i) => (
+                {evaluation.coaching_notes!.map((note, i) => (
                   <li key={i}>{note}</li>
                 ))}
               </ul>
             </div>
           )}
 
-          {evaluation.next_steps.length > 0 && (
+          {(evaluation.next_steps?.length ?? 0) > 0 && (
             <div className="mt-16">
               <h3 className="section-title">Next Steps</h3>
               <ul className="list-clean">
-                {evaluation.next_steps.map((step, i) => (
+                {evaluation.next_steps!.map((step, i) => (
                   <li key={i}>{step}</li>
                 ))}
               </ul>
@@ -420,6 +497,13 @@ function GrowthView({
         )}
       </p>
 
+      {evaluation?.s1_opportunity_checklist != null && (
+        <DigestRow
+          label="S1 checklist"
+          value={`${evaluation.s1_checklist_yes_count ?? s1ChecklistYesCountFromRows(evaluation.s1_opportunity_checklist)}/5 yes (open AE tab for detail)`}
+        />
+      )}
+
       {evaluation?.icp_fit && evaluation.icp_fit !== "unknown" && (
         <DigestRow label="ICP Fit" value={evaluation.icp_fit.replace(/_/g, " ")} />
       )}
@@ -474,6 +558,12 @@ function probBadgeClass(value: number): string {
   if (value >= 61) return "badge-green";
   if (value >= 41) return "badge-amber";
   return "badge-red";
+}
+
+function s1ChecklistAnswerBadgeClass(answer: S1ChecklistAnswer): string {
+  if (answer === "yes") return "badge-green";
+  if (answer === "no") return "badge-gray";
+  return "badge-amber";
 }
 
 function icpFitBadgeClass(fit: string): string {

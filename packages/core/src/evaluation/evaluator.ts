@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import fs from "fs";
 import path from "path";
-import { evaluationSchema, EvaluationResult } from "./schemas";
+import { evaluationSchema, EvaluationResult, withS1ChecklistYesCount } from "./schemas";
 import { ExtractedSignals } from "../extraction/schemas";
 import type { DealBrief } from "../dealBrief/schemas";
 import { MeetingContext } from "../types/normalized";
@@ -57,5 +57,5 @@ export async function evaluateSignals(
   const parsed = JSON.parse(content);
   const validated = evaluationSchema.parse(parsed);
 
-  return validated;
+  return withS1ChecklistYesCount(validated);
 }

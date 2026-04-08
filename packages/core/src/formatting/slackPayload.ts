@@ -72,6 +72,8 @@ export function formatGrowthTeamDigest(
     "",
     `*Stage 1 Probability:* ${evaluation.stage_1_probability}% — ${evaluation.overall_status}`,
     evaluation.stage_1_reasoning,
+    "",
+    `_S1 checklist:_ *${evaluation.s1_checklist_yes_count}/5* yes _(open dashboard / AE tab for detail)_`,
   ].join("\n");
 
   return {
@@ -102,6 +104,7 @@ export function formatAESlackMessage(
 
   const text = [
     `*Your call with ${account}* — ${evaluation.overall_status} (${evaluation.stage_1_probability}%)`,
+    `_S1 checklist:_ *${evaluation.s1_checklist_yes_count}/5* yes _(see dashboard for detail)_`,
     "",
     `*BANT Summary*`,
     `Budget: ${scorePips(b.budget.score)} — ${b.budget.rationale}`,
