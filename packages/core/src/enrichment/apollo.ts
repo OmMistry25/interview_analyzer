@@ -5,8 +5,6 @@ const ENTERPRISE_THRESHOLD = 2000;
 export interface CompanyEnrichmentResult {
   employeeCount: number | null;
   segment: DealSegment;
-  /** Apollo organization name when enrich succeeds */
-  organizationName: string | null;
 }
 
 function guessDomainFromCompanyName(companyName: string): string {
@@ -14,7 +12,8 @@ function guessDomainFromCompanyName(companyName: string): string {
 }
 
 /**
- * Enrich company by email domain when available (accurate); otherwise guess domain from title-parsed name.
+ * Apollo **only** for estimated headcount → enterprise vs mid_tier. Display name comes from
+ * `resolveProspectDisplayName` (email domain label + title) — we do not use Apollo org name (saves noise and avoids using credits for labeling).
  */
 export async function lookupCompanyEnrichment(params: {
   prospectEmailDomain: string | null;
@@ -23,7 +22,6 @@ export async function lookupCompanyEnrichment(params: {
   const fallback: CompanyEnrichmentResult = {
     employeeCount: null,
     segment: "mid_tier",
-    organizationName: null,
   };
 
   const domain =
@@ -50,19 +48,15 @@ export async function lookupCompanyEnrichment(params: {
     }
 
     const data = (await res.json()) as {
-      organization?: { estimated_num_employees?: number; name?: string };
+      organization?: { estimated_num_employees?: number };
     };
 
     const employeeCount: number | null = data?.organization?.estimated_num_employees ?? null;
-    const organizationName: string | null =
-      typeof data?.organization?.name === "string" && data.organization.name.trim()
-        ? data.organization.name.trim()
-        : null;
 
     const segment: DealSegment =
       employeeCount != null && employeeCount >= ENTERPRISE_THRESHOLD ? "enterprise" : "mid_tier";
 
-    return { employeeCount, segment, organizationName };
+    return { employeeCount, segment };
   } catch (err) {
     console.warn(`  Apollo enrichment failed for ${domain}:`, err);
     return fallback;

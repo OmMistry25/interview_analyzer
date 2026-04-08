@@ -103,17 +103,17 @@ export function displayNameFromEmailDomain(domain: string): string {
 }
 
 /**
- * Human-readable prospect company for metadata: enrich > title parse > domain label.
+ * Human-readable prospect company for metadata — **no vendor API** for the label.
+ * Prefer a label from the **attendee email domain** when present; else meeting title parse.
  */
 export function resolveProspectDisplayName(params: {
-  organizationNameFromEnrich: string | null;
   titleParsedName: string | null;
   emailDomain: string | null;
 }): string | null {
-  const org = params.organizationNameFromEnrich?.trim();
-  if (org) return org;
+  if (params.emailDomain?.trim()) {
+    return displayNameFromEmailDomain(params.emailDomain.trim());
+  }
   const title = params.titleParsedName?.trim();
   if (title) return title;
-  if (params.emailDomain) return displayNameFromEmailDomain(params.emailDomain);
   return null;
 }

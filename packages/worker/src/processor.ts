@@ -129,8 +129,7 @@ async function processFathomMeeting(
     });
     meetingCtx.dealSegment = enrichment.segment;
     meetingCtx.prospectCompany = resolveProspectDisplayName({
-      organizationNameFromEnrich: enrichment.organizationName,
-      titleParsed,
+      titleParsedName: titleParsed,
       emailDomain: meetingCtx.prospectEmailDomain,
     });
     console.log(
@@ -366,8 +365,7 @@ async function reprocessCall(
     titleParsedCompanyName: titleParsed,
   });
   const prospectCompany = resolveProspectDisplayName({
-    organizationNameFromEnrich: enrichment.organizationName,
-    titleParsed,
+    titleParsedName: titleParsed,
     emailDomain: prospectEmailDomain,
   });
 

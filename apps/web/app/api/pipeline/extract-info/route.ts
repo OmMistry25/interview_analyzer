@@ -50,7 +50,6 @@ export async function POST(req: NextRequest) {
     : null;
 
   const company_name = resolveProspectDisplayName({
-    organizationNameFromEnrich: null,
     titleParsedName: companyNameFromTitle,
     emailDomain: companyDomain,
   });

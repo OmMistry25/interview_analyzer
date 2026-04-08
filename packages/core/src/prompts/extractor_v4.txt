@@ -36,7 +36,7 @@ Console is an AI-powered IT support automation platform. It auto-resolves IT req
 ## Key Rules
 
 - **Our company** is identified in the metadata. Speakers from our company are the SELLERS. Never extract our company name as the prospect's company.
-- **Prospect company** in metadata is a **resolved label** (preferably from the org directory via external attendees’ email domain, else meeting title, else domain-derived). Use this as the company_name unless the transcript explicitly names a different company for the prospect.
+- **Prospect company** in metadata is a **resolved label** from external attendees’ **email domain** (brand derived from domain) when available, else meeting title parse — not from a third-party directory. Use this as the company_name unless the transcript explicitly names a different company for the prospect.
 - **Employee count** refers to the prospect's TOTAL COMPANY headcount, NOT a team size. If someone says "we have 4 people on the team" or "there are 10 of us in IT", that is a TEAM size — set employee_count to "unknown". Only extract employee_count if the speaker explicitly refers to the whole company/organization (e.g., "we have 500 employees company-wide", "the company is about 200 people"). However, total seat/license count (e.g., "we're about 850") can be used as a proxy for employee_count when it clearly refers to company-wide users.
 - **External attendees** (from the metadata) are on the prospect side. Use their email domains to help identify the prospect company.
 - If information is explicitly stated, provide the value and at least one verbatim evidence quote.
