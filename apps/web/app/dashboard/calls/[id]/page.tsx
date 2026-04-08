@@ -10,17 +10,27 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
   const supabase = await createSupabaseServerClient();
   // Default on; set NEXT_PUBLIC_DEAL_BRIEF_UI_ENABLED=false to hide tab / skip selecting deal_brief_json
   const dealBriefUiEnabled = process.env.NEXT_PUBLIC_DEAL_BRIEF_UI_ENABLED !== "false";
-  const signalsSelect = dealBriefUiEnabled ? "signals_json, deal_brief_json" : "signals_json";
+
+  // Use literal .select() strings so Supabase generated types accept the query (dynamic string breaks TS).
+  const signalsQuery = dealBriefUiEnabled
+    ? supabase
+        .from("extracted_signals")
+        .select("signals_json, deal_brief_json")
+        .eq("call_id", id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    : supabase
+        .from("extracted_signals")
+        .select("signals_json")
+        .eq("call_id", id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
   const [callRes, signalsRes, evalRes, participantsRes] = await Promise.all([
     supabase.from("calls").select("*").eq("id", id).single(),
-    supabase
-      .from("extracted_signals")
-      .select(signalsSelect)
-      .eq("call_id", id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle(),
+    signalsQuery,
     supabase
       .from("evaluations")
       .select("overall_status, score, stage_1_probability, evaluation_json")
