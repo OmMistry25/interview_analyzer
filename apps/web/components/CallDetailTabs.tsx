@@ -480,24 +480,28 @@ function GrowthView({
         ) : (signals.stack_canonical_hits?.length ?? 0) > 0 ? (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {signals.stack_canonical_hits!.map((id) => (
-              <span key={id} className="badge badge-amber" style={{ fontSize: 12, fontWeight: 400 }}>
+              <span key={id} className="badge badge-green" style={{ fontSize: 12, fontWeight: 400 }}>
                 {stackCatalogLabel(id)}
               </span>
             ))}
           </div>
         ) : signals.account?.tech_stack ? (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {Object.entries(signals.account.tech_stack).map(([key, val]) => (
-              <span
-                key={key}
-                className={`badge ${val === true ? "badge-green" : val === false ? "badge-gray" : "badge-amber"}`}
-                style={{ fontSize: 12, fontWeight: 400 }}
-              >
-                {key.replace(/_/g, " ")}
-                {typeof val === "string" ? `: ${val}` : ""}
+          (() => {
+            const positive = Object.entries(signals.account.tech_stack).filter(([, val]) => val === true);
+            return positive.length > 0 ? (
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {positive.map(([key]) => (
+                  <span key={key} className="badge badge-green" style={{ fontSize: 12, fontWeight: 400 }}>
+                    {key.replace(/_/g, " ")}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <span className="digest-value" style={{ color: "var(--text-secondary)" }}>
+                —
               </span>
-            ))}
-          </div>
+            );
+          })()
         ) : (
           <span className="digest-value" style={{ color: "var(--text-secondary)" }}>
             —
