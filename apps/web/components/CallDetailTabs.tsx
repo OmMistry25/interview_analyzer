@@ -435,6 +435,49 @@ function AEView({
   );
 }
 
+/** Maps extractor `account.tech_stack` boolean keys to stack catalog ids for labels + dedupe with `stack_canonical_hits`. */
+const TECH_STACK_BOOLEAN_TO_CATALOG_ID: Record<string, string> = {
+  slack: "slack",
+  teams: "microsoft_teams",
+  okta: "okta",
+  google_workspace: "google_workspace",
+  entra_ad: "entra_id",
+};
+
+function growthTechStackLabels(signals: ExtractedSignals): string[] {
+  const hits = signals.stack_canonical_hits ?? [];
+  const canonicalIds = new Set(hits);
+  const seenNorm = new Set<string>();
+  const out: string[] = [];
+
+  const push = (label: string) => {
+    const n = label.trim().toLowerCase();
+    if (seenNorm.has(n)) return;
+    seenNorm.add(n);
+    out.push(label);
+  };
+
+  for (const id of hits) {
+    push(stackCatalogLabel(id));
+  }
+
+  const ts = signals.account?.tech_stack;
+  if (!ts) return out;
+
+  for (const [key, val] of Object.entries(ts)) {
+    if (val !== true) continue;
+    const catId = TECH_STACK_BOOLEAN_TO_CATALOG_ID[key];
+    if (catId && canonicalIds.has(catId)) continue;
+    if (catId) {
+      push(stackCatalogLabel(catId));
+    } else {
+      push(key.replace(/_/g, " "));
+    }
+  }
+
+  return out;
+}
+
 function GrowthView({
   evaluation,
   signals,
@@ -477,22 +520,13 @@ function GrowthView({
           <span className="digest-value" style={{ color: "var(--text-secondary)" }}>
             —
           </span>
-        ) : (signals.stack_canonical_hits?.length ?? 0) > 0 ? (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-            {signals.stack_canonical_hits!.map((id) => (
-              <span key={id} className="badge badge-green" style={{ fontSize: 12, fontWeight: 400 }}>
-                {stackCatalogLabel(id)}
-              </span>
-            ))}
-          </div>
-        ) : signals.account?.tech_stack ? (
-          (() => {
-            const positive = Object.entries(signals.account.tech_stack).filter(([, val]) => val === true);
-            return positive.length > 0 ? (
+        ) : (() => {
+            const labels = growthTechStackLabels(signals);
+            return labels.length > 0 ? (
               <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                {positive.map(([key]) => (
-                  <span key={key} className="badge badge-green" style={{ fontSize: 12, fontWeight: 400 }}>
-                    {key.replace(/_/g, " ")}
+                {labels.map((label) => (
+                  <span key={label} className="badge badge-green" style={{ fontSize: 12, fontWeight: 400 }}>
+                    {label}
                   </span>
                 ))}
               </div>
@@ -501,12 +535,7 @@ function GrowthView({
                 —
               </span>
             );
-          })()
-        ) : (
-          <span className="digest-value" style={{ color: "var(--text-secondary)" }}>
-            —
-          </span>
-        )}
+          })()}
       </div>
 
       <div className="mb-12">
