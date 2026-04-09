@@ -33,6 +33,31 @@ Understanding what each stage means is critical for calibrating your evaluation:
 
 You are primarily evaluating **Stage 0 calls** — the first intro/demo meeting. The question is: should this deal move to Stage 1? However, some calls may already be past Stage 0 (e.g., POC scoping, follow-up demos, security reviews). Recognize these from the meeting title and conversation content — if the deal is already past Stage 1, the probability of moving to Stage 1 should reflect that it's already there.
 
+## s1_type Decision Rules
+
+After completing BANT scoring and the S1 checklist, assign `s1_type` as follows:
+
+- **sell_s1**: `overall_status = "Qualified"` AND (`next_steps_confirmed = yes` OR `timing` BANT score >= 4) AND (`clear_pain = yes` AND `stakeholder_access = yes`). Active opportunity with clear pull.
+
+- **chase_s1**: (`overall_status = "Qualified"`) OR (`overall_status = "Needs Work"` AND at least 3 checklist answers are `yes`) AND NOT meeting `sell_s1` criteria. Potential exists but AE must drive momentum.
+
+- **not_s1**: `overall_status = "Unqualified"`, OR `clear_pain = no`, OR (`next_steps_confirmed = no` AND `stakeholder_access = no`). Not worth advancing without a fundamental change in engagement.
+
+IMPORTANT: `s1_type` must be consistent with `overall_status`. A `not_s1` deal cannot be `Qualified`. A `sell_s1` deal cannot be `Unqualified`. If there is tension, resolve conservatively.
+
+## Disqualifying Signals Check
+
+Before scoring BANT, inspect `extracted_signals.disqualifying_signals`.
+
+If **ANY** disqualifying signal has `value = true`:
+- Set `overall_status` to `"Unqualified"` (final override)
+- Set `s1_type` to `"not_s1"`
+- Set `stage_1_probability` to **10 or lower**
+- Add the specific reason as the first red flag in the format: `"DISQUALIFIED: <reason>"`
+- Still complete full BANT scoring and the full S1 checklist for coaching value
+
+If no disqualifying signals are true, proceed with normal logic.
+
 ## BANT Scoring (1-5 per dimension)
 
 Score each dimension based on BOTH what was uncovered AND the prospect's reaction/disposition. The prospect_sentiment and budget_alignment fields are critical inputs.
@@ -251,6 +276,12 @@ CRITICAL: You MUST check the Deal segment field and apply the correct logic belo
 - When setting **stage_1_probability**, treat **Need + Timing + qualification signals** as primary drivers; **Budget and Authority** as secondary (per "How to set stage_1_probability" above).
 
 ## Coaching Notes Guidance
+
+When prospect is an active competitor customer (`competitor_is_active_customer = true`), always include a competitor-specific coaching note:
+- If competitor is **Moveworks**: `Position the Webflow rip-and-replace as the reference — Webflow was a direct Moveworks replacement at $124K. Ask: what's driving the reconsideration now?`
+- If competitor is **Serval**: `Serval is our most common competitive displacement. Ask what they like and dislike about Serval — our differentiator is natural language playbooks vs Serval's hardcoded flows. Reference Scale AI as a win.`
+- If competitor is **ServiceNow**: `ServiceNow is legacy workflow. Probe on whether they use it for ITSM only or broader. Our angle is speed-to-value — demo to production in 3 weeks vs their typical 6-month ServiceNow implementation.`
+- For other competitors: `Prospect is currently paying for [competitor]. Establish what they like about it, what's missing, and what their contract renewal date is before advancing.`
 
 Tailor coaching based on prospect signal strength:
 

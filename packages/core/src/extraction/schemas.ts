@@ -98,6 +98,54 @@ const qualificationSignalsSchema = z.object({
   competitor_is_active_customer: z.boolean(),
 }).optional();
 
+
+const disqualifyingSignalSchema = z.object({
+  value: z.boolean(),
+  evidence: z.array(z.string()),
+});
+
+const disqualifyingIndustrySignalSchema = z.object({
+  value: z.boolean(),
+  industry: z.string(),
+  evidence: z.array(z.string()),
+});
+
+const unsupportedIdpSignalSchema = z.object({
+  value: z.boolean(),
+  idp_mentioned: z.string(),
+  evidence: z.array(z.string()),
+});
+
+const competitorContractSignalSchema = z.object({
+  value: z.boolean(),
+  competitor: z.string(),
+  contract_end: z.string(),
+  evidence: z.array(z.string()),
+});
+
+const disqualifyingSignalsSchema = z.object({
+  disqualifying_industry: disqualifyingIndustrySignalSchema,
+  no_slack_and_no_teams: disqualifyingSignalSchema,
+  msp_only_it: disqualifyingSignalSchema,
+  below_200_employees: disqualifyingSignalSchema,
+  unsupported_idp: unsupportedIdpSignalSchema,
+  active_long_term_competitor_contract: competitorContractSignalSchema,
+});
+
+const defaultDisqualifyingSignals: z.infer<typeof disqualifyingSignalsSchema> = {
+  disqualifying_industry: { value: false, industry: "unknown", evidence: [] },
+  no_slack_and_no_teams: { value: false, evidence: [] },
+  msp_only_it: { value: false, evidence: [] },
+  below_200_employees: { value: false, evidence: [] },
+  unsupported_idp: { value: false, idp_mentioned: "unknown", evidence: [] },
+  active_long_term_competitor_contract: {
+    value: false,
+    competitor: "unknown",
+    contract_end: "unknown",
+    evidence: [],
+  },
+};
+
 const participantTitleSchema = z.object({
   name: z.string(),
   title: z.string(),
@@ -125,10 +173,14 @@ export const extractedSignalsSchema = z.object({
   qualification_signals: qualificationSignalsSchema,
   participant_titles: z.array(participantTitleSchema),
   call_summary: z.string(),
+  disqualifying_signals: disqualifyingSignalsSchema.optional(),
   /** High-recall vendor/tool rows from the transcript (verbatim names + quotes). */
   stack_mentions: z.array(stackMentionSchema).optional(),
   /** Filled after extraction by matching snippets against packages/core/src/stack/catalog.ts */
   stack_canonical_hits: z.array(z.string()).optional(),
-});
+}).transform((parsed) => ({
+  ...parsed,
+  disqualifying_signals: parsed.disqualifying_signals ?? defaultDisqualifyingSignals,
+}));
 
 export type ExtractedSignals = z.infer<typeof extractedSignalsSchema>;

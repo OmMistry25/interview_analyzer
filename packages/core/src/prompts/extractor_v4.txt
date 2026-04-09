@@ -29,8 +29,8 @@ Console is an AI-powered IT support automation platform. It auto-resolves IT req
 **Director+ band** (for classifying prospect influence — titles at or above this level are **not** defaulted to **coach**): Director, Sr Director, Associate Director (when clearly senior), Head of, VP, SVP, EVP, Chief*, C*O, General Manager (when clearly P&L/divisional). Titles like Manager, Lead (without Director+ scope), Specialist, Analyst, Coordinator, Administrator, Technician, “minion” operational roles are **below** this band unless the transcript explicitly states broader authority.
 
 **Competitors — three buckets:**
-- AI-native ITSM: Aisera, Rezolve, Serv, Moveworks (now acquired by ServiceNow), Harmoni
-- Workflow-based: ServiceNow (legacy), Serv (hardcoded/legacy variant)
+- AI-native ITSM: Aisera, Rezolve, Serval, Moveworks (now acquired by ServiceNow), Harmony
+- Workflow-based: ServiceNow (legacy), Serval (hardcoded/legacy variant)
 - Automation platforms: Workato, Zapier, Make, Credal, Freshworks AI, Jira AI suites
 
 ## Key Rules
@@ -94,11 +94,24 @@ Also populate **stack_mentions** (root level, see JSON schema): high-recall list
 Look for these specific signals that indicate deal progression:
 - **Demo requested**: Prospect asks for or agrees to a team-wide demo or deeper dive
 - **POC mentioned**: Any mention of proof of concept, pilot, trial, or testing
-- **POC confirmed**: Prospect actively agreed to a POC/pilot with a timeline or next steps to kick it off (e.g., "let's start the POC next week", "we'll scope the pilot on Wednesday"). This is STRONGER than poc_mentioned — it means both parties committed, not just discussed hypothetically.
+- **POC confirmed**: BOTH parties explicitly committed to a POC/pilot — prospect gave a clear verbal yes AND a concrete next step was established (e.g., scoping call scheduled, sandbox access requested, date agreed upon). Do NOT set true if only the AE proposed it or the prospect said "maybe" / "let's think about it". This is a strong signal — be conservative.
 - **NDA mentioned**: Any mention of NDA, non-disclosure, or legal/security review
 - **Actively evaluating tools**: Prospect states they are evaluating multiple vendors or tools
 - **Multiple stakeholders present**: More than one person from the prospect side on the call (check attendees and who speaks)
 - **Competitor as active customer**: Prospect is currently USING (not just evaluating) a competitor product
+
+## Disqualifying Signals Extraction
+
+Populate the top-level `disqualifying_signals` block conservatively:
+
+- **disqualifying_industry**: true if transcript or metadata indicates Aerospace, Higher Education, Government, Defense, Education, or Non-profit. Fill `industry` with what was detected.
+- **no_slack_and_no_teams**: true ONLY when both Slack and Teams are explicitly absent/denied. If either is unknown, false.
+- **msp_only_it**: true when prospect explicitly says IT is fully outsourced to MSP and they do not run internal IT.
+- **below_200_employees**: true only when total company employees are explicitly stated and below 200.
+- **unsupported_idp**: true only when the only IDP mentioned is unsupported (not Okta, Google Workspace/Google IDP, Entra AD, Microsoft 365). Fill `idp_mentioned`.
+- **active_long_term_competitor_contract**: true when prospect is an active paying competitor customer and cites meaningful remaining term (for example, locked in for years or renewal far out). Fill `competitor` and `contract_end` when available.
+
+If uncertain, set `value` to false and string fields to `"unknown"`.
 
 ## Output Schema
 
@@ -180,6 +193,14 @@ Return a JSON object with this exact structure:
     "multiple_stakeholders_present": <boolean>,
     "competitor_bucket": "<ai_native_itsm|workflow_based|automation_platform|none|unknown>",
     "competitor_is_active_customer": <boolean>
+  },
+  "disqualifying_signals": {
+    "disqualifying_industry": { "value": <boolean>, "industry": "<string or unknown>", "evidence": ["<quote>"] },
+    "no_slack_and_no_teams": { "value": <boolean>, "evidence": ["<quote if known, else empty>"] },
+    "msp_only_it": { "value": <boolean>, "evidence": ["<quote>"] },
+    "below_200_employees": { "value": <boolean>, "evidence": ["<quote>"] },
+    "unsupported_idp": { "value": <boolean>, "idp_mentioned": "<string or unknown>", "evidence": ["<quote>"] },
+    "active_long_term_competitor_contract": { "value": <boolean>, "competitor": "<string or unknown>", "contract_end": "<string or unknown>", "evidence": ["<quote>"] }
   },
   "participant_titles": [
     { "name": "<participant name>", "title": "<job title>", "role_in_deal": "<decision_maker|champion|coach|evaluator|end_user|unknown>" }
