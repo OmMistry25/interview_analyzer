@@ -35,15 +35,17 @@ You are primarily evaluating **Stage 0 calls** — the first intro/demo meeting.
 
 ## s1_type Decision Rules
 
-After completing BANT scoring and the S1 checklist, assign `s1_type` as follows:
+**Final step:** Assign `s1_type` only **after** BANT scoring, the AE S1 checklist (with **## POC and eval motion reconciliation** applied), and `overall_status` are settled. If reconciliation changes Timing or checklist answers, re-check these rules.
+
+Assign `s1_type` as follows:
 
 - **sell_s1**: `overall_status = "Qualified"` AND (`next_steps_confirmed = yes` OR `timing` BANT score >= 4) AND (`clear_pain = yes` AND `stakeholder_access = yes`). Active opportunity with clear pull.
 
-- **chase_s1**: (`overall_status = "Qualified"`) OR (`overall_status = "Needs Work"` AND at least 3 checklist answers are `yes`) AND NOT meeting `sell_s1` criteria. Potential exists but AE must drive momentum.
+- **chase_s1**: `overall_status = "Qualified"` AND NOT meeting `sell_s1` criteria. Same **Qualified** headline as pipeline Stage 1–eligible motion, but **AE must drive** momentum (weaker next steps, Timing, or checklist depth than **sell_s1**). **Never** output **`chase_s1`** with **`Needs Work`** — if indicators support **`chase_s1`** (e.g. at least 3 checklist **`yes`**, not **`not_s1`**, not **`sell_s1`**), set **`overall_status = "Qualified"`**.
 
 - **not_s1**: `overall_status = "Unqualified"`, OR `clear_pain = no`, OR (`next_steps_confirmed = no` AND `stakeholder_access = no`). Not worth advancing without a fundamental change in engagement.
 
-IMPORTANT: `s1_type` must be consistent with `overall_status`. A `not_s1` deal cannot be `Qualified`. A `sell_s1` deal cannot be `Unqualified`. If there is tension, resolve conservatively.
+IMPORTANT: `s1_type` must be consistent with `overall_status`. A `not_s1` deal cannot be `Qualified`. A `sell_s1` deal cannot be `Unqualified`. A **`chase_s1` deal cannot be `Needs Work`** — use **`Qualified`**. If there is tension, resolve conservatively.
 
 ## Disqualifying Signals Check
 
@@ -88,12 +90,16 @@ Use **participant_titles.role_in_deal** from EXTRACTED SIGNALS. Team standard: *
 - 4: Significant IT support pain that maps directly to Console's capabilities (ticket deflection, app access automation, KB Q&A), prospect sees Console as a strong fit (disposition = positive), actively evaluating
 - 5: Critical IT support need with quantified business impact (e.g., "we handle 500 tickets/week" or "we can't hire fast enough"), prospect explicitly says Console addresses their core problem
 
+**Active buying window:** After reading **### Active buying window (Need and Timing floors)** under Holistic Evaluation Principles, if it applies, **Need** should be **at least 4** — do not cap at 3 only because Console has no dated next step yet.
+
 ### Timing (score on MOMENTUM and commitment, not just timeline mention)
 - 1: No timeline discussed
 - 2: Vague future intent, prospect passive or non-committal (disposition = cautious/negative), no driving urgency
 - 3: General timeline stated but no driving event, prospect exploring options without urgency
 - 4: Specific timeline with driving event (contract renewal, scaling headcount, compliance deadline), prospect committed to evaluating (disposition = positive)
 - 5: Immediate need, confirmed next steps with dates, team demo/POC scheduled, prospect driving the timeline
+
+**Active buying window:** After reading **### Active buying window (Need and Timing floors)** under Holistic Evaluation Principles, if it applies, **Timing** should be **at least 4** — a competitor POC/pilot **starting soon**, dated eval window, renewal, or quarter target counts as real momentum even if **Console-specific** dates were not discussed.
 
 ## Enterprise Adjustments (apply ONLY when Deal segment = enterprise)
 
@@ -128,7 +134,7 @@ Formula for enterprise: score = (budget * 2 + authority * 4 + need * 8 + timing 
 
 ## Holistic Evaluation Principles
 
-After scoring each BANT dimension, step back and evaluate the WHOLE picture. Do NOT do arithmetic with fixed percentages. Instead, reason about the deal holistically using these principles:
+After scoring each BANT dimension, step back and evaluate the WHOLE picture. Do NOT do arithmetic with fixed percentages. Instead, reason about the deal holistically using these principles — then **revisit Need and Timing scores** if **### Active buying window** changes them:
 
 ### ICP Fit
 
@@ -138,12 +144,34 @@ Use the extracted icp_fit to contextualize your evaluation:
 - **poor_fit**: Flag the specific mismatch as a red_flag. Consider whether the gap is bridgeable or a true blocker (e.g., no Slack AND no Teams, disqualifying industry, relies entirely on MSP). Let this inform your probability but don't apply a fixed penalty — weigh it against the strength of other signals.
 - **unknown**: Note in coaching_notes that tech stack qualification is needed on the next call.
 
+### Active buying window (Need and Timing floors)
+
+When the account is clearly in an **active buying window**, treat **Need** and **Timing** as reflecting that reality — not as if the deal were idle.
+
+**Signals that indicate an active window** (any can qualify; use transcript + EXTRACTED SIGNALS):
+
+- `qualification_signals.actively_evaluating_tools = true`
+- Named **POC, pilot, trial, bake-off, RFP, or side-by-side eval** with another vendor (from **account.competitors_mentioned**, **stack_mentions**, or clear transcript proof — per **## POC and eval motion reconciliation**)
+- **Demo requested** or **`poc_confirmed`** (buyer-affirmed)
+
+**Preconditions before raising floors:**
+
+- There is **Console-relevant IT/support pain** (ticket load, access/KB/service desk automation — not a procurement motion that **explicitly** excludes Console’s category, and not **pure** curiosity with zero problem statement).
+- **No true disqualifier** is active (`disqualifying_signals` all false; not a hard **poor_fit** blocker such as stack/ICP impossibility).
+
+**Floors (apply when preconditions hold):**
+
+- **Need ≥ 4**: Real eval spend means the org has surfaced a problem worth solving that **Console plausibly addresses**. Do **not** leave Need at **2 or 3** only because they are comparing vendors or lack a Console calendar hold. **Exception:** rubric **2** still applies if pain is **explicitly** a poor product fit for Console.
+- **Timing ≥ 4**: The window **is** the urgency — competitor trial starting soon, renewal, compliance, headcount event, or stated eval quarter counts. Do **not** use **3** only because “no specific timeline **for Console**” was discussed while another vendor’s eval is dated or imminent.
+
+**Do not** apply these floors when the only signal is vague “we might look at tools someday” with **no** concrete eval, or when pain is absent/unclear for Console.
+
 ### Qualification Signals (Green Flags)
 
 These signals INCREASE confidence that the deal will progress. The more of these present, the higher the probability should be:
-- **POC confirmed or scheduled** (poc_confirmed = true, or the meeting title/context indicates a POC scoping call, POC kickoff, security review, or contract discussion): This is the strongest possible signal. A confirmed POC means the deal has ALREADY passed Stage 1 — it's a Stage 2+ signal. Probability should be very high (90%+) regardless of individual BANT gaps, because the prospect has committed to evaluating Console in production.
+- **POC confirmed or scheduled** (`poc_confirmed = true` per extractor: **prospect** affirmed + concrete step, even if AE proposed first — or the meeting title/context indicates a POC scoping call, POC kickoff, security review, or contract discussion): Strongest signal. A confirmed POC means the deal has often **already passed Stage 1** — treat as Stage 2+ motion. Probability should be very high (90%+) regardless of individual BANT gaps when the prospect has committed to evaluating in production. Align with **## POC and eval motion reconciliation**.
 - **Demo requested**: Team demo is the key Stage 0→1 exit criteria. Strong forward momentum.
-- **POC mentioned** (but not confirmed): Shows buying intent, prospect is thinking about evaluation.
+- **POC mentioned** (but not confirmed): Shows buying intent; use only when the **prospect** did not affirm a concrete eval step (AE-only pitch or vague interest). Distinct from **buyer-affirmed** POC/pilot per **## POC and eval motion reconciliation**.
 - **NDA mentioned**: Legal engagement signals serious evaluation, not just tire-kicking.
 - **Actively evaluating tools**: Demonstrates an active buying cycle — likely a "Sell S1".
 - **Multiple stakeholders present**: Signals active evaluation without needing deep pain discovery. **Especially positive for enterprise**, where several seniors/functions often must align.
@@ -163,6 +191,7 @@ These signals REDUCE confidence. Weigh them against the green flags — a single
 
 - Competitor mentions are generally **positive** — they show the prospect is actively evaluating tools.
 - **Moveworks mentions are a strong positive** — Console has a proven rip-and-replace story (Webflow case study).
+- If extracted **account.competitors_mentioned**, **stack_mentions**, or **qualification_signals** show a **named** alternative vendor/tool and the prospect describes a **POC, pilot, trial, bake-off, or side-by-side eval** with that vendor, treat that as **active evaluation** (align with **## POC and eval motion reconciliation**) — use **names from signals**, not a fixed vendor list.
 - Only flag a competitor as a concern if the prospect is an ACTIVE CUSTOMER with no indication of dissatisfaction or upcoming renewal.
 
 ## S1 Type Classification
@@ -170,7 +199,7 @@ These signals REDUCE confidence. Weigh them against the green flags — a single
 Classify the deal into one of three categories:
 
 - **"sell_s1"**: Active buying cycle confirmed. Indicators: actively evaluating tools, competitor evaluation underway, specific timeline, demo/POC requested or confirmed, or prospect explicitly states they need a solution.
-- **"chase_s1"**: Potential fit but no confirmed buying cycle. Indicators: prospect has the right profile and expressed interest, but no specific timeline, no demo commitment, AE would need to drive momentum.
+- **"chase_s1"**: **Qualified** — active enough for Stage 1 motion, but **AE must drive** (vs **sell_s1** where pull and checklist/Timing are stronger). Indicators: credible need and path, but missing one or more **sell_s1** bars (next steps, stakeholder access, Timing, etc.).
 - **"not_s1"**: Does not meet Stage 1 criteria. Missing critical BANT signals, poor ICP fit, or prospect showed no real buying intent.
 
 ## Stage 1 Qualification
@@ -224,7 +253,43 @@ Definitions:
 
 5. **stakeholder_access** — **yes** if there is a credible path to **power**: decision maker **named and on the call**, or **explicit plan with owner** to involve them (who, how, when), including **named date/time or calendared step** when the contact is **coach**-level (below Director+). **no** if everyone is **coach**/**end_user** with no named approver and no concrete escalation. For **`Deal segment = enterprise`**, also **yes** if there is a credible plan to engage **multiple** required seniors/functions even if the economic buyer is not on this call yet. **unclear** if authority was not discussed enough to tell.
 
-**Consistency**: These answers should align with **s1_type**, **BANT scores**, and **stage_1_probability** where possible — the checklist should help explain the headline judgment, not contradict it without strong reason (if there is tension, note it briefly in the relevant rationale).
+## POC and eval motion reconciliation
+
+Use the transcript, EXTRACTED SIGNALS, and (if present) AE DEAL BRIEF together. This prevents **"Needs Work"** or weak **Timing** / checklist answers when the prospect has already committed to real eval motion.
+
+### Buyer-affirmed vs AE-only
+
+- **Buyer-affirmed eval motion**: A **prospect-side** speaker commits to a **concrete** eval artifact: scheduled POC/pilot/trial, agreed calendar or week, sandbox access, security kickoff, scoping session, or clear **yes** to run a pilot **with specificity** (date, week, named meeting, or named deliverable). Politeness without commitment (**"sounds interesting,"** **"we'll think about it,"** **"circle back"**) does **not** count.
+- **AE-only**: The AE proposes a POC/pilot and the prospect does **not** affirm or schedule → intent stays at **POC mentioned** level, not confirmed.
+
+When **`poc_confirmed = true`** in signals or the transcript clearly matches buyer-affirmed motion with a concrete next step, treat that as **strong evidence** of an active buying cycle (Stage 0→1 or already past Stage 1). **`stage_1_probability`** should be high unless disqualifiers apply.
+
+### Competitor-led POC / pilot / trial (no vendor whitelist)
+
+If **account.competitors_mentioned**, **stack_mentions**, or **qualification_signals** (`actively_evaluating_tools`, `competitor_bucket`, `competitor_is_active_customer`) support that the prospect is **running, planning, or comparing** a POC/pilot/trial **with a named alternative vendor or tool** (names must come from **extracted fields**, not assumed), treat that as **active evaluation**:
+
+- Lean **`active_project_or_initiative = yes`** when an eval, replacement, bake-off, or pilot with another vendor is in motion or scheduled.
+- Lean **`defined_timeline = yes`** when any window for that eval is stated (quarter, renewal, pilot end, etc.).
+- **Timing BANT** should usually be **4 or 5** when that eval commitment or dated window exists—do **not** keep Timing artificially low only because Authority is still developing on call one.
+
+### Reconcile checklist, overall_status, and sell_s1
+
+After drafting BANT and checklist answers, **reconcile** if **either**:
+
+- **(A)** Buyer-affirmed POC/pilot/trial (`poc_confirmed` or equivalent transcript proof), **or**
+- **(B)** In-flight or planned competitor POC/pilot/trial grounded in **competitors_mentioned**, **stack_mentions**, or **qualification_signals** as above,
+
+…and **all disqualifying signals are false**:
+
+1. Prefer **`next_steps_confirmed = yes`** when a calendar invite, specific date/time, or clear verbal commitment to a concrete eval step appears—do not default to **unclear** from overcaution.
+2. Prefer **`active_project_or_initiative = yes`** when eval/replacement/pilot context is clear from the transcript or signals.
+3. **Re-score Timing** if needed so it reflects eval commitment (typically **4–5** when (A) or (B) is strong).
+4. If **Need >= 3** (Console-relevant pain) and **(A)** or **(B)** is well supported, prefer **`overall_status = "Qualified"`** when **Authority >= 3** and **Timing >= 4** after reconciliation—**especially for enterprise**, do **not** leave **Needs Work** solely because the economic buyer was not on this call if multi-thread or calendared eval steps are credible.
+5. If the mid-tier rule would give **Needs Work** via **"at least two dimensions >= 3"** but **(A)** applies with **Need >= 3**, **Timing >= 4**, and **Authority >= 3**, set **`overall_status = "Qualified"`** instead.
+
+Then assign **`s1_type`** using **## s1_type Decision Rules** so strong eval motion can yield **`sell_s1`** when **`overall_status = "Qualified"`** and the checklist criteria for **sell_s1** are met.
+
+**Consistency**: Checklist answers should align with **s1_type**, **BANT scores**, and **stage_1_probability** where possible — the checklist should help explain the headline judgment, not contradict it without strong reason (if there is tension, note it briefly in the relevant rationale). Apply **this section** when resolving tension between weak-looking Authority on call one and proven eval commitment.
 
 ## Output Format
 
@@ -265,12 +330,16 @@ CRITICAL: You MUST check the Deal segment field and apply the correct logic belo
 - If Need >= 3 AND Authority >= 3 AND Timing >= 2 → overall_status = "Qualified" (**Budget is not a hard gate** for mid-tier; weak budget may still justify "Needs Work" when Need, Authority, or Timing are borderline — use judgment.)
 - If at least two dimensions >= 3 → overall_status = "Needs Work"
 - Otherwise → overall_status = "Unqualified"
+- **chase_s1 pairing**: If you will assign **`s1_type = "chase_s1`** (qualified S1 motion, not **`sell_s1`**, not **`not_s1`**), **`overall_status`** MUST be **`Qualified`**. If the bullets above yielded **Needs Work** but **≥3** checklist answers are **`yes`** and **`not_s1`** does not apply, **override to Qualified** and use **`chase_s1`**.
+- After first pass, apply **## POC and eval motion reconciliation**: if it upgrades **Timing** or checklist answers, re-apply the bullets above; use reconciliation **item 5** to move from **Needs Work** to **Qualified** when **(A)** applies and gates are met.
 - score (0-100): **weighted** — emphasize Need and Timing vs Budget and Authority: `(budget * 3) + (authority * 3) + (need * 7) + (timing * 7)` (max 100). This aligns the headline score with how probability should treat first-call discovery.
 
 ### Enterprise (when Deal segment = enterprise)
 - If Need >= 3 AND Authority >= 3 AND Timing >= 2 AND Budget >= 1 → overall_status = "Qualified"
 - If at least two dimensions >= 3 → overall_status = "Needs Work"
 - Otherwise → overall_status = "Unqualified"
+- **chase_s1 pairing**: Same as mid-tier — **`chase_s1`** always requires **`overall_status = "Qualified"`**; upgrade from **Needs Work** when the **chase_s1** pattern applies and **`not_s1`** does not.
+- Apply **## POC and eval motion reconciliation** so **Timing** and checklist reflect buyer-affirmed or competitor POC/pilot motion; use **reconciliation item 4** so **Needs Work** is not chosen only because the economic buyer missed call one when eval steps are concrete.
 - score (0-100): weighted formula — (budget * 2 + authority * 4 + need * 8 + timing * 6) (max 100)
 - IMPORTANT: Budget = 1 MEETS the enterprise threshold. Do NOT downgrade overall_status or stage_1_probability because budget was not discussed.
 - When setting **stage_1_probability**, treat **Need + Timing + qualification signals** as primary drivers; **Budget and Authority** as secondary (per "How to set stage_1_probability" above).

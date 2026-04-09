@@ -1,7 +1,11 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { shouldShowParticipantTitle } from "@transcript-evaluator/core/src/formatting/slackPayload";
+import type { ExtractedSignals as CoreExtractedSignals } from "@transcript-evaluator/core/src/extraction/schemas";
+import {
+  formatCompetitorsMentionedForDigest,
+  shouldShowParticipantTitle,
+} from "@transcript-evaluator/core/src/formatting/slackPayload";
 import { stackCatalogLabel } from "@transcript-evaluator/core/src/stack/catalog";
 
 interface BantScore {
@@ -455,11 +459,64 @@ function GrowthView({
     return `${p.name} — ${titleInfo.title}`;
   });
 
+  const competitorsLine = signals
+    ? formatCompetitorsMentionedForDigest(signals as unknown as CoreExtractedSignals)
+    : "";
+
   return (
     <section className="card" style={{ lineHeight: 1.8 }}>
       <p style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>
         {aeName ?? "AE"} just met with {accountName ?? "Unknown Account"}
       </p>
+
+      <div className="mb-12">
+        <span className="digest-label" style={{ display: "block", marginBottom: 8 }}>
+          Tech stack
+        </span>
+        {!signals ? (
+          <span className="digest-value" style={{ color: "var(--text-secondary)" }}>
+            —
+          </span>
+        ) : (signals.stack_canonical_hits?.length ?? 0) > 0 ? (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {signals.stack_canonical_hits!.map((id) => (
+              <span key={id} className="badge badge-amber" style={{ fontSize: 12, fontWeight: 400 }}>
+                {stackCatalogLabel(id)}
+              </span>
+            ))}
+          </div>
+        ) : signals.account?.tech_stack ? (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {Object.entries(signals.account.tech_stack).map(([key, val]) => (
+              <span
+                key={key}
+                className={`badge ${val === true ? "badge-green" : val === false ? "badge-gray" : "badge-amber"}`}
+                style={{ fontSize: 12, fontWeight: 400 }}
+              >
+                {key.replace(/_/g, " ")}
+                {typeof val === "string" ? `: ${val}` : ""}
+              </span>
+            ))}
+          </div>
+        ) : (
+          <span className="digest-value" style={{ color: "var(--text-secondary)" }}>
+            —
+          </span>
+        )}
+      </div>
+
+      <div className="mb-12">
+        <span className="digest-label" style={{ display: "block", marginBottom: 8 }}>
+          Competitors
+        </span>
+        {competitorsLine ? (
+          <span className="digest-value">{competitorsLine}</span>
+        ) : (
+          <span className="digest-value" style={{ color: "var(--text-secondary)" }}>
+            —
+          </span>
+        )}
+      </div>
 
       <DigestRow label="Participants" value={participantDisplay.join(", ") || "—"} />
       <DigestRow label="Call Notes" value={evaluation?.call_notes ?? signals?.call_summary ?? "—"} />
@@ -486,16 +543,28 @@ function GrowthView({
       <hr className="digest-divider" />
 
       <p className="digest-row">
-        <span className="digest-label">Probability it moves to Stage 1: </span>
-        <span className={`badge ${probBadgeClass(evaluation?.stage_1_probability ?? 0)}`} style={{ fontSize: 14, marginLeft: 4 }}>
-          {evaluation?.stage_1_probability ?? "—"}%
-        </span>
-        {evaluation?.s1_type && evaluation.s1_type !== "not_s1" && (
-          <span className={`badge ${evaluation.s1_type === "sell_s1" ? "badge-green" : "badge-amber"}`} style={{ fontSize: 12, marginLeft: 8 }}>
+        <span className="digest-label">Status: </span>
+        {evaluation?.overall_status ? (
+          <span className={`badge ${statusBadgeClass(evaluation.overall_status)}`} style={{ fontSize: 14 }}>
+            {evaluation.overall_status}
+          </span>
+        ) : (
+          <span className="digest-value">—</span>
+        )}
+        {evaluation?.s1_type && evaluation.s1_type !== "not_s1" ? (
+          <span
+            className={`badge ${evaluation.s1_type === "sell_s1" ? "badge-green" : "badge-amber"}`}
+            style={{ fontSize: 12, marginLeft: 8 }}
+          >
             {evaluation.s1_type === "sell_s1" ? "Sell S1" : "Chase S1"}
           </span>
-        )}
+        ) : null}
       </p>
+      {evaluation?.stage_1_reasoning ? (
+        <p style={{ color: "var(--text-secondary)", fontSize: 14, marginTop: 4, marginBottom: 0 }}>
+          {evaluation.stage_1_reasoning}
+        </p>
+      ) : null}
 
       {evaluation?.s1_opportunity_checklist != null && (
         <DigestRow
@@ -552,12 +621,6 @@ function statusBadgeClass(status: string): string {
     Unqualified: "badge-red",
   };
   return map[status] ?? "badge-gray";
-}
-
-function probBadgeClass(value: number): string {
-  if (value >= 61) return "badge-green";
-  if (value >= 41) return "badge-amber";
-  return "badge-red";
 }
 
 function s1ChecklistAnswerBadgeClass(answer: S1ChecklistAnswer): string {

@@ -94,7 +94,7 @@ Also populate **stack_mentions** (root level, see JSON schema): high-recall list
 Look for these specific signals that indicate deal progression:
 - **Demo requested**: Prospect asks for or agrees to a team-wide demo or deeper dive
 - **POC mentioned**: Any mention of proof of concept, pilot, trial, or testing
-- **POC confirmed**: BOTH parties explicitly committed to a POC/pilot — prospect gave a clear verbal yes AND a concrete next step was established (e.g., scoping call scheduled, sandbox access requested, date agreed upon). Do NOT set true if only the AE proposed it or the prospect said "maybe" / "let's think about it". This is a strong signal — be conservative.
+- **POC confirmed**: The **prospect** gave a clear verbal **yes** or agreement to a POC/pilot/trial **and** a **concrete** next step was established (e.g., week or date agreed, scoping call scheduled, sandbox access requested, calendar invite promised with specificity). It is **true** even if the **AE proposed** the POC first — what matters is **buyer-side** affirmation, not who spoke first. Do **NOT** set true if the prospect only said "maybe," "let's think about it," "we'll circle back," or similar without a concrete step. This is a strong signal — stay strict on **buyer commitment**, not on **who initiated** the idea.
 - **NDA mentioned**: Any mention of NDA, non-disclosure, or legal/security review
 - **Actively evaluating tools**: Prospect states they are evaluating multiple vendors or tools
 - **Multiple stakeholders present**: More than one person from the prospect side on the call (check attendees and who speaks)

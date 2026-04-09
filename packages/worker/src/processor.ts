@@ -5,7 +5,7 @@ import { extractProspectEmailDomainFromParticipants, resolveProspectDisplayName 
 import { extractSignals } from "@transcript-evaluator/core/src/extraction/extractor";
 import { extractDealBrief } from "@transcript-evaluator/core/src/dealBrief/extractor";
 import { evaluateSignals } from "@transcript-evaluator/core/src/evaluation/evaluator";
-import { crossCheckEvaluation } from "@transcript-evaluator/core/src/evaluation/rulesEngine";
+import { alignChaseS1OverallStatus, crossCheckEvaluation } from "@transcript-evaluator/core/src/evaluation/rulesEngine";
 import { lookupCompanyEnrichment } from "@transcript-evaluator/core/src/enrichment/apollo";
 import { formatGrowthTeamDigest, formatAESlackMessage } from "@transcript-evaluator/core/src/formatting/slackPayload";
 import { runDailyExtraction, runBackfill, runWeeklyAnalysis } from "@transcript-evaluator/core/src/analysis/geoAnalysisPipeline";
@@ -172,6 +172,7 @@ async function processFathomMeeting(
       console.log(`  MISMATCH: ${crossCheck.mismatch}`);
       evaluation.overall_status = crossCheck.status;
     }
+    alignChaseS1OverallStatus(evaluation);
 
     await persistEvaluation(db, {
       processingRunId: run.id,
@@ -433,6 +434,7 @@ async function reprocessCall(
       console.log(`  MISMATCH: ${crossCheck.mismatch}`);
       evaluation.overall_status = crossCheck.status;
     }
+    alignChaseS1OverallStatus(evaluation);
 
     await persistEvaluation(db, {
       processingRunId: run.id,

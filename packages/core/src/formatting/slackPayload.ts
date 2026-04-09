@@ -1,5 +1,6 @@
 import type { EvaluationResult } from "../evaluation/schemas";
 import type { ExtractedSignals } from "../extraction/schemas";
+import { stackCatalogLabel } from "../stack/catalog";
 
 interface SlackContext {
   aeName: string | null;
@@ -11,15 +12,48 @@ function scorePips(score: number): string {
   return "●".repeat(score) + "○".repeat(5 - score);
 }
 
-function sentimentLabel(disposition: string): string {
-  const map: Record<string, string> = {
-    positive: "Positive",
-    neutral: "Neutral",
-    cautious: "Cautious",
-    negative: "Negative",
-    unknown: "Unknown",
-  };
-  return map[disposition] ?? disposition;
+function formatTechStackStructured(
+  ts: NonNullable<ExtractedSignals["account"]["tech_stack"]>
+): string {
+  const parts: string[] = [];
+  for (const [key, val] of Object.entries(ts)) {
+    if (val === true) {
+      parts.push(key.replace(/_/g, " "));
+    } else if (typeof val === "string" && val.trim() && val.toLowerCase() !== "unknown") {
+      parts.push(`${key.replace(/_/g, " ")}: ${val}`);
+    }
+  }
+  return parts.join(", ");
+}
+
+/** Comma-separated stack labels: canonical catalog first, else structured account.tech_stack. Empty if nothing to show. */
+export function formatCanonicalStackForDigest(signals: ExtractedSignals): string {
+  const hits = signals.stack_canonical_hits ?? [];
+  if (hits.length > 0) {
+    return hits.map((id) => stackCatalogLabel(id)).join(", ");
+  }
+  const ts = signals.account.tech_stack;
+  if (ts) {
+    const s = formatTechStackStructured(ts);
+    if (s) return s;
+  }
+  return "";
+}
+
+/** Primary competitors line from account.competitors_mentioned; empty when unknown / absent. */
+export function formatCompetitorsMentionedForDigest(signals: ExtractedSignals): string {
+  const field = signals.account.competitors_mentioned;
+  if (!field) return "";
+  const v = field.value;
+  if (v === false || v === "unknown") return "";
+  if (typeof v === "string" && (!v.trim() || v.toLowerCase() === "unknown")) return "";
+  if (Array.isArray(v)) {
+    const items = v.map((x) => String(x).trim()).filter(Boolean);
+    return items.length ? items.join(", ") : "";
+  }
+  if (typeof v === "number") return String(v);
+  if (typeof v === "boolean") return v ? "Competitors discussed" : "";
+  return String(v).trim();
 }
 
 /** True when we should show job title next to name (omit empty / literal "unknown"). */
@@ -45,8 +79,17 @@ export function formatGrowthTeamDigest(
     )
     .join("\n");
 
+  const stackLine = formatCanonicalStackForDigest(signals);
+  const competitorsLine = formatCompetitorsMentionedForDigest(signals);
+
   const text = [
     `*${ae}* just met with *${account}*`,
+    "",
+    `*Tech stack*`,
+    stackLine || "_(none detected)_",
+    "",
+    `*Competitors*`,
+    competitorsLine || "_(none detected)_",
     "",
     `*Participants*`,
     participantLines || "_(none detected)_",
@@ -56,21 +99,17 @@ export function formatGrowthTeamDigest(
     "",
     `*Budget* ${scorePips(b.budget.score)} (${b.budget.score}/5)`,
     b.budget.rationale,
-    `Alignment: ${signals.budget.budget_alignment} · Prospect: ${sentimentLabel(signals.budget.prospect_sentiment.disposition)}`,
     "",
     `*Authority* ${scorePips(b.authority.score)} (${b.authority.score}/5)`,
     b.authority.rationale,
-    `Prospect: ${sentimentLabel(signals.authority.prospect_sentiment.disposition)}`,
     "",
     `*Need* ${scorePips(b.need.score)} (${b.need.score}/5)`,
     b.need.rationale,
-    `Prospect: ${sentimentLabel(signals.need.prospect_sentiment.disposition)}`,
     "",
     `*Timing* ${scorePips(b.timing.score)} (${b.timing.score}/5)`,
     b.timing.rationale,
-    `Prospect: ${sentimentLabel(signals.timing.prospect_sentiment.disposition)}`,
     "",
-    `*Stage 1 Probability:* ${evaluation.stage_1_probability}% — ${evaluation.overall_status}`,
+    `*Status:* ${evaluation.overall_status}`,
     evaluation.stage_1_reasoning,
     "",
     `_S1 checklist:_ *${evaluation.s1_checklist_yes_count}/5* yes _(open dashboard / AE tab for detail)_`,
