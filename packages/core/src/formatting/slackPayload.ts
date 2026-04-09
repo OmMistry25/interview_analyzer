@@ -102,6 +102,9 @@ export function formatGrowthTeamDigest(
   const text = [
     `*${ae}* just met with *${account}*`,
     "",
+    `*Status:* ${evaluation.overall_status}`,
+    evaluation.stage_1_reasoning,
+    "",
     `*Tech stack*`,
     stackLine || "_(none detected)_",
     "",
@@ -125,11 +128,6 @@ export function formatGrowthTeamDigest(
     "",
     `*Timing* ${scorePips(b.timing.score)} (${b.timing.score}/5)`,
     b.timing.rationale,
-    "",
-    `*Status:* ${evaluation.overall_status}`,
-    evaluation.stage_1_reasoning,
-    "",
-    `_S1 checklist:_ *${evaluation.s1_checklist_yes_count}/5* yes _(open dashboard / AE tab for detail)_`,
   ].join("\n");
 
   return {
@@ -172,7 +170,6 @@ export function formatAESlackMessage(
 
   const text = [
     `*Your call with ${account}* — ${evaluation.overall_status} (${evaluation.stage_1_probability}%)`,
-    `_S1 checklist:_ *${evaluation.s1_checklist_yes_count}/5* yes _(see dashboard for detail)_`,
     "",
     `*BANT Summary*`,
     `Budget: ${scorePips(b.budget.score)} — ${b.budget.rationale}`,
