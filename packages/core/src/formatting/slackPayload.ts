@@ -8,6 +8,11 @@ interface SlackContext {
   meetingTitle: string;
 }
 
+export interface SlackFormatOptions {
+  /** Minimal Zapier/Slack body: status + no-show only (no BANT, stack, checklist). */
+  noShow?: boolean;
+}
+
 function scorePips(score: number): string {
   return "●".repeat(score) + "○".repeat(5 - score);
 }
@@ -65,8 +70,20 @@ export function shouldShowParticipantTitle(title: string): boolean {
 export function formatGrowthTeamDigest(
   evaluation: EvaluationResult,
   signals: ExtractedSignals,
-  ctx: SlackContext
+  ctx: SlackContext,
+  options?: SlackFormatOptions
 ) {
+  if (options?.noShow) {
+    return {
+      ae_name: ctx.aeName,
+      account_name: ctx.accountName,
+      meeting_title: ctx.meetingTitle,
+      overall_status: "Unqualified" as const,
+      stage_1_probability: 0,
+      text: "*Status:* Unqualified\n*No show*",
+    };
+  }
+
   const ae = ctx.aeName ?? "Unknown AE";
   const account = ctx.accountName ?? "Unknown Account";
   const b = evaluation.bant_scores;
@@ -128,8 +145,20 @@ export function formatGrowthTeamDigest(
 export function formatAESlackMessage(
   evaluation: EvaluationResult,
   signals: ExtractedSignals,
-  ctx: SlackContext
+  ctx: SlackContext,
+  options?: SlackFormatOptions
 ) {
+  if (options?.noShow) {
+    return {
+      ae_name: ctx.aeName,
+      account_name: ctx.accountName,
+      meeting_title: ctx.meetingTitle,
+      overall_status: "Unqualified" as const,
+      stage_1_probability: 0,
+      text: "*Status:* Unqualified\n*No show*",
+    };
+  }
+
   const account = ctx.accountName ?? "Unknown Account";
   const b = evaluation.bant_scores;
 

@@ -18,7 +18,6 @@ Console is an AI-powered IT support automation platform. It auto-resolves IT req
 **ICP (Ideal Customer Profile):**
 - 200+ employees (sweet spot: 500–10,000)
 - Industries: Software/tech-forward, Fintech, AI scale-ups, Healthcare
-- Disqualifying industries: Aerospace, Higher Education, Government, Defense, Education, Non-profit organizations
 - Required comms: Slack OR Teams (must have at least one)
 - Supported identity: Okta, Google as IDP, Entra AD, Microsoft 365
 - ITSM: Jira, FreshService, Zendesk, Linear, ServiceNow
@@ -104,7 +103,6 @@ Look for these specific signals that indicate deal progression:
 
 Populate the top-level `disqualifying_signals` block conservatively:
 
-- **disqualifying_industry**: true if transcript or metadata indicates Aerospace, Higher Education, Government, Defense, Education, or Non-profit. Fill `industry` with what was detected.
 - **no_slack_and_no_teams**: true ONLY when both Slack and Teams are explicitly absent/denied. If either is unknown, false.
 - **msp_only_it**: true when prospect explicitly says IT is fully outsourced to MSP and they do not run internal IT.
 - **below_200_employees**: true only when total company employees are explicitly stated and below 200.
@@ -195,7 +193,6 @@ Return a JSON object with this exact structure:
     "competitor_is_active_customer": <boolean>
   },
   "disqualifying_signals": {
-    "disqualifying_industry": { "value": <boolean>, "industry": "<string or unknown>", "evidence": ["<quote>"] },
     "no_slack_and_no_teams": { "value": <boolean>, "evidence": ["<quote if known, else empty>"] },
     "msp_only_it": { "value": <boolean>, "evidence": ["<quote>"] },
     "below_200_employees": { "value": <boolean>, "evidence": ["<quote>"] },
@@ -216,7 +213,7 @@ Return a JSON object with this exact structure:
 Based on the tech stack, company profile, and industry extracted, classify icp_fit:
 - **strong_fit**: Slack or Teams + any supported IDP + 500-10K employees + has full-time IT staff + ICP industry
 - **moderate_fit**: Most of the stack matches but one gap (e.g., company size is borderline 200-500, or partial stack match)
-- **poor_fit**: No Slack AND no Teams, relies on MSP for IT, non-standard comms only (e.g., Zoom Chat as primary), company too small (<200 employees), or disqualifying industry (Aerospace, Higher Ed, Government, Defense, Education, Non-profit)
+- **poor_fit**: No Slack AND no Teams, relies on MSP for IT, non-standard comms only (e.g., Zoom Chat as primary), company too small (<200 employees), or other clear ICP mismatch discussed on the call
 - **unknown**: Not enough tech stack information discussed to assess
 
 ## Competitor Extraction

@@ -7,11 +7,17 @@ import { extractDealBrief } from "@transcript-evaluator/core/src/dealBrief/extra
 import { evaluateSignals } from "@transcript-evaluator/core/src/evaluation/evaluator";
 import { alignChaseS1OverallStatus, crossCheckEvaluation } from "@transcript-evaluator/core/src/evaluation/rulesEngine";
 import { lookupCompanyEnrichment } from "@transcript-evaluator/core/src/enrichment/apollo";
-import { formatGrowthTeamDigest, formatAESlackMessage } from "@transcript-evaluator/core/src/formatting/slackPayload";
+import {
+  formatGrowthTeamDigest,
+  formatAESlackMessage,
+  type SlackFormatOptions,
+} from "@transcript-evaluator/core/src/formatting/slackPayload";
+import { isNoShowCall } from "@transcript-evaluator/core/src/ingestion/noShow";
+import { buildNoShowExtractedSignals, buildNoShowEvaluation } from "@transcript-evaluator/core/src/pipeline/noShowArtifacts";
 import { runDailyExtraction, runBackfill, runWeeklyAnalysis } from "@transcript-evaluator/core/src/analysis/geoAnalysisPipeline";
 import type { EvaluationResult } from "@transcript-evaluator/core/src/evaluation/schemas";
 import type { ExtractedSignals } from "@transcript-evaluator/core/src/extraction/schemas";
-import type { MeetingContext } from "@transcript-evaluator/core/src/types/normalized";
+import type { MeetingContext, NormalizedCall } from "@transcript-evaluator/core/src/types/normalized";
 import type { DealBrief } from "@transcript-evaluator/core/src/dealBrief/schemas";
 import { isDealBriefPipelineEnabled } from "@transcript-evaluator/core/src/config/featureFlags";
 import {
@@ -45,6 +51,55 @@ function resolveCallbackAccountName(
     return candidate;
   }
   return prospectFromTitle;
+}
+
+async function extractEvaluateAndTune(
+  normalized: NormalizedCall,
+  meetingCtx: MeetingContext
+): Promise<{
+  signals: ExtractedSignals;
+  evaluation: EvaluationResult;
+  dealBrief: DealBrief | null;
+  noShow: boolean;
+}> {
+  if (isNoShowCall(normalized)) {
+    console.log("  No-show transcript — skipping LLM extract, deal brief, and evaluate.");
+    const signals = buildNoShowExtractedSignals(normalized, meetingCtx);
+    const evaluation = buildNoShowEvaluation();
+    return { signals, evaluation, dealBrief: null, noShow: true };
+  }
+
+  console.log(`  Extracting signals... (prospect: ${meetingCtx.prospectCompany ?? "unknown"})`);
+  const signals = await extractSignals(normalized.utterances, meetingCtx);
+  console.log("  Signals extracted.");
+
+  const briefEnabled = isDealBriefPipelineEnabled();
+  let dealBrief: DealBrief | null = null;
+  if (briefEnabled) {
+    try {
+      console.log("  Building AE deal brief...");
+      dealBrief = await extractDealBrief(normalized.utterances, meetingCtx, signals);
+      console.log("  Deal brief done.");
+    } catch (briefErr) {
+      const msg = briefErr instanceof Error ? briefErr.message : String(briefErr);
+      console.warn(`  Deal brief failed: ${msg.slice(0, 200)}`);
+    }
+  } else {
+    console.log("  Deal brief pipeline off (DEAL_BRIEF_ENABLED=false).");
+  }
+
+  console.log("  Evaluating (BANT)...");
+  const evaluation = await evaluateSignals(signals, meetingCtx, "gpt-4o", dealBrief);
+  console.log(`  Evaluation: ${evaluation.overall_status} (score: ${evaluation.score}, stage1: ${evaluation.stage_1_probability}%)`);
+
+  const crossCheck = crossCheckEvaluation(signals, evaluation, meetingCtx.dealSegment);
+  if (crossCheck.mismatch) {
+    console.log(`  MISMATCH: ${crossCheck.mismatch}`);
+    evaluation.overall_status = crossCheck.status;
+  }
+  alignChaseS1OverallStatus(evaluation);
+
+  return { signals, evaluation, dealBrief, noShow: false };
 }
 
 export async function processJob(
@@ -137,42 +192,15 @@ async function processFathomMeeting(
         (meetingCtx.prospectEmailDomain ? ` · domain: ${meetingCtx.prospectEmailDomain}` : "")
     );
 
-    console.log(`  Extracting signals... (prospect: ${meetingCtx.prospectCompany ?? "unknown"})`);
-    const signals = await extractSignals(normalized.utterances, meetingCtx);
-    console.log("  Signals extracted.");
+    const { signals, evaluation, dealBrief, noShow } = await extractEvaluateAndTune(normalized, meetingCtx);
 
     const briefEnabled = isDealBriefPipelineEnabled();
-    let dealBrief: DealBrief | null = null;
-    if (briefEnabled) {
-      try {
-        console.log("  Building AE deal brief...");
-        dealBrief = await extractDealBrief(normalized.utterances, meetingCtx, signals);
-        console.log("  Deal brief done.");
-      } catch (briefErr) {
-        const msg = briefErr instanceof Error ? briefErr.message : String(briefErr);
-        console.warn(`  Deal brief failed: ${msg.slice(0, 200)}`);
-      }
-    } else {
-      console.log("  Deal brief pipeline off (DEAL_BRIEF_ENABLED=false).");
-    }
-
     await persistExtractedSignals(db, {
       processingRunId: run.id,
       callId: call.id,
       signalsJson: signals,
       dealBriefJson: briefEnabled ? dealBrief : undefined,
     });
-
-    console.log("  Evaluating (BANT)...");
-    const evaluation = await evaluateSignals(signals, meetingCtx, "gpt-4o", dealBrief);
-    console.log(`  Evaluation: ${evaluation.overall_status} (score: ${evaluation.score}, stage1: ${evaluation.stage_1_probability}%)`);
-
-    const crossCheck = crossCheckEvaluation(signals, evaluation, meetingCtx.dealSegment);
-    if (crossCheck.mismatch) {
-      console.log(`  MISMATCH: ${crossCheck.mismatch}`);
-      evaluation.overall_status = crossCheck.status;
-    }
-    alignChaseS1OverallStatus(evaluation);
 
     await persistEvaluation(db, {
       processingRunId: run.id,
@@ -188,7 +216,7 @@ async function processFathomMeeting(
 
     const callbackUrl = payload.callback_url as string | undefined;
     if (callbackUrl) {
-      await fireCallback(callbackUrl, evaluation, signals, meetingCtx, dealBrief);
+      await fireCallback(callbackUrl, evaluation, signals, meetingCtx, dealBrief, { noShow });
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -202,7 +230,8 @@ async function fireCallback(
   evaluation: EvaluationResult,
   signals: ExtractedSignals,
   meetingCtx: MeetingContext,
-  dealBrief: DealBrief | null
+  dealBrief: DealBrief | null,
+  slackOptions?: SlackFormatOptions
 ): Promise<void> {
   const ctx = {
     aeName: meetingCtx.aeName,
@@ -210,8 +239,8 @@ async function fireCallback(
     meetingTitle: meetingCtx.meetingTitle,
   };
 
-  const growthDigest = formatGrowthTeamDigest(evaluation, signals, ctx);
-  const aeMessage = formatAESlackMessage(evaluation, signals, ctx);
+  const growthDigest = formatGrowthTeamDigest(evaluation, signals, ctx, slackOptions);
+  const aeMessage = formatAESlackMessage(evaluation, signals, ctx, slackOptions);
 
   const body = {
     growth_team: growthDigest,
@@ -341,8 +370,6 @@ async function reprocessCall(
     textNormalized: u.text_normalized as string,
   }));
 
-  if (utterances.length === 0) throw new Error(`No utterances found for call ${callId}`);
-
   console.log(`  Reprocessing "${call.title}" with ${utterances.length} utterances`);
 
   const hash = computeTranscriptHash(utterances);
@@ -387,6 +414,23 @@ async function reprocessCall(
       (prospectEmailDomain ? ` · domain: ${prospectEmailDomain}` : "")
   );
 
+  const normalized: NormalizedCall = {
+    sourceMeetingId: null,
+    sourceRecordingId: null,
+    title: call.title as string,
+    startTime: null,
+    endTime: null,
+    shareUrl: null,
+    fathomUrl: null,
+    participants: (participants ?? []).map((p) => ({
+      name: p.name as string,
+      email: (p.email as string) ?? null,
+      role: p.role as "ae" | "prospect" | "unknown",
+      sourceLabel: null,
+    })),
+    utterances,
+  };
+
   const run = await createProcessingRun(db, {
     callId,
     rubricVersion: "bant_v1",
@@ -399,42 +443,15 @@ async function reprocessCall(
   console.log(`  Processing run: ${run.id}`);
 
   try {
-    console.log(`  Extracting signals... (prospect: ${meetingCtx.prospectCompany ?? "unknown"})`);
-    const signals = await extractSignals(utterances, meetingCtx);
-    console.log("  Signals extracted.");
+    const { signals, evaluation, dealBrief, noShow } = await extractEvaluateAndTune(normalized, meetingCtx);
 
     const briefEnabled = isDealBriefPipelineEnabled();
-    let dealBrief: DealBrief | null = null;
-    if (briefEnabled) {
-      try {
-        console.log("  Building AE deal brief...");
-        dealBrief = await extractDealBrief(utterances, meetingCtx, signals);
-        console.log("  Deal brief done.");
-      } catch (briefErr) {
-        const msg = briefErr instanceof Error ? briefErr.message : String(briefErr);
-        console.warn(`  Deal brief failed: ${msg.slice(0, 200)}`);
-      }
-    } else {
-      console.log("  Deal brief pipeline off (DEAL_BRIEF_ENABLED=false).");
-    }
-
     await persistExtractedSignals(db, {
       processingRunId: run.id,
       callId,
       signalsJson: signals,
       dealBriefJson: briefEnabled ? dealBrief : undefined,
     });
-
-    console.log("  Evaluating (BANT)...");
-    const evaluation = await evaluateSignals(signals, meetingCtx, "gpt-4o", dealBrief);
-    console.log(`  Evaluation: ${evaluation.overall_status} (score: ${evaluation.score}, stage1: ${evaluation.stage_1_probability}%)`);
-
-    const crossCheck = crossCheckEvaluation(signals, evaluation, meetingCtx.dealSegment);
-    if (crossCheck.mismatch) {
-      console.log(`  MISMATCH: ${crossCheck.mismatch}`);
-      evaluation.overall_status = crossCheck.status;
-    }
-    alignChaseS1OverallStatus(evaluation);
 
     await persistEvaluation(db, {
       processingRunId: run.id,

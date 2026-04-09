@@ -104,12 +104,6 @@ const disqualifyingSignalSchema = z.object({
   evidence: z.array(z.string()),
 });
 
-const disqualifyingIndustrySignalSchema = z.object({
-  value: z.boolean(),
-  industry: z.string(),
-  evidence: z.array(z.string()),
-});
-
 const unsupportedIdpSignalSchema = z.object({
   value: z.boolean(),
   idp_mentioned: z.string(),
@@ -124,7 +118,6 @@ const competitorContractSignalSchema = z.object({
 });
 
 const disqualifyingSignalsSchema = z.object({
-  disqualifying_industry: disqualifyingIndustrySignalSchema,
   no_slack_and_no_teams: disqualifyingSignalSchema,
   msp_only_it: disqualifyingSignalSchema,
   below_200_employees: disqualifyingSignalSchema,
@@ -133,7 +126,6 @@ const disqualifyingSignalsSchema = z.object({
 });
 
 const defaultDisqualifyingSignals: z.infer<typeof disqualifyingSignalsSchema> = {
-  disqualifying_industry: { value: false, industry: "unknown", evidence: [] },
   no_slack_and_no_teams: { value: false, evidence: [] },
   msp_only_it: { value: false, evidence: [] },
   below_200_employees: { value: false, evidence: [] },

@@ -14,7 +14,6 @@ Console auto-resolves IT requests (password resets, app access, knowledge base Q
 - 50%+ ticket deflection for customers
 - Reference deals: Scale AI ($184K, 2,400 users), Webflow ($124K, 860 users — Moveworks rip & replace), Bloomerang ($70K, 600 users)
 - ICP: 200+ employees (sweet spot 500-10K), Slack or Teams, any supported IDP, IT team of 10+ servicing internal requests
-- Disqualifying industries: Aerospace, Higher Ed, Government, Defense, Education, Non-profits
 - Decision Makers: CIO, VP of IT, Director/Head of IT
 - Champions: IT Manager, Service Desk Manager, TechOps Lead
 
@@ -141,7 +140,7 @@ After scoring each BANT dimension, step back and evaluate the WHOLE picture. Do 
 Use the extracted icp_fit to contextualize your evaluation:
 - **strong_fit**: Console's sweet spot — no adjustment needed.
 - **moderate_fit**: Note the gap in coaching_notes (e.g., "verify Teams/Slack migration plans"). Minor caution but should not significantly reduce probability if other signals are strong.
-- **poor_fit**: Flag the specific mismatch as a red_flag. Consider whether the gap is bridgeable or a true blocker (e.g., no Slack AND no Teams, disqualifying industry, relies entirely on MSP). Let this inform your probability but don't apply a fixed penalty — weigh it against the strength of other signals.
+- **poor_fit**: Flag the specific mismatch as a red_flag. Consider whether the gap is bridgeable or a true blocker (e.g., no Slack AND no Teams, relies entirely on MSP). Let this inform your probability but don't apply a fixed penalty — weigh it against the strength of other signals.
 - **unknown**: Note in coaching_notes that tech stack qualification is needed on the next call.
 
 ### Active buying window (Need and Timing floors)
@@ -184,7 +183,6 @@ These signals REDUCE confidence. Weigh them against the green flags — a single
 - **No full-time IT person** (and no strong compensating signals like budget/timeline/demo): Usually means the company isn't ready for Console yet.
 - **Uses MSP for IT support**: Timeline typically deferred. But if the MSP itself is the prospect exploring Console for their clients, evaluate the specific use case.
 - **No Slack AND no Teams**: Prospect needs at least one of these for Console to work. Having neither is a significant blocker.
-- **Disqualifying industry**: Aerospace, Higher Education, Government, Defense, Education, Non-profit organizations — these industries are not Console's target market.
 - **Company too small** (<200 employees): Insufficient scale for Console's value proposition.
 
 ### Competitor Logic
