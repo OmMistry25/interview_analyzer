@@ -30,6 +30,29 @@ test("filterEvidenceAgainstTranscript keeps quotes present in transcript", () =>
   assert.ok(kept[0].includes("access requests"));
 });
 
+test("filterEvidenceAgainstTranscript matches quote spanning two utterances (space-joined blob)", () => {
+  const utterances = [
+    u("We have tons of", 0),
+    u("password reset tickets every week.", 1),
+  ];
+  const blob = buildTranscriptMatchBlob(utterances);
+  const kept = filterEvidenceAgainstTranscript(
+    ["We have tons of password reset tickets every week."],
+    blob
+  );
+  assert.equal(kept.length, 1);
+});
+
+test("filterEvidenceAgainstTranscript loose match tolerates dash punctuation differences", () => {
+  const utterances = [u("We use Jamf—mostly for Mac inventory and compliance tracking here.")];
+  const blob = buildTranscriptMatchBlob(utterances);
+  const kept = filterEvidenceAgainstTranscript(
+    ["We use Jamf - mostly for Mac inventory and compliance tracking here."],
+    blob
+  );
+  assert.equal(kept.length, 1);
+});
+
 test("filterEvidenceAgainstTranscript drops short junk", () => {
   const utterances = [u("Long enough transcript segment for matching purposes here.")];
   const blob = buildTranscriptMatchBlob(utterances);

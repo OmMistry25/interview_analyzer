@@ -47,25 +47,49 @@ function normalizeForMatch(s: string): string {
   return s
     .toLowerCase()
     .replace(/\s+/g, " ")
+    .replace(/[\u2018\u2019]/g, "'")
+    .replace(/[\u201c\u201d]/g, '"')
     .replace(/[""'']/g, '"')
     .trim();
 }
 
-/** Full transcript text for substring checks (normalized utterances). */
-export function buildTranscriptMatchBlob(utterances: NormalizedUtterance[]): string {
-  return normalizeForMatch(utterances.map((u) => u.textNormalized).join("\n"));
+/** Letters/digits only, collapsed — tolerates punctuation vs transcript. */
+function normalizeLooseTokens(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
-/** Keep evidence quotes that appear as substrings of the transcript blob (case/whitespace tolerant). */
+/**
+ * Full transcript text for substring checks.
+ * Space-join utterances so a model quote that spans two turns still matches (newline join breaks that).
+ */
+export function buildTranscriptMatchBlob(utterances: NormalizedUtterance[]): string {
+  return normalizeForMatch(utterances.map((u) => u.textNormalized).join(" "));
+}
+
+function quoteMatchesTranscript(q: string, blob: string, looseBlob: string): boolean {
+  const n = normalizeForMatch(q);
+  if (n.length >= 8 && blob.includes(n)) return true;
+
+  const looseQ = normalizeLooseTokens(q);
+  if (looseQ.length < 24) return false;
+  const wc = looseQ.split(" ").filter((w) => w.length > 0).length;
+  if (wc < 5) return false;
+  return looseBlob.includes(looseQ);
+}
+
+/** Keep evidence quotes that appear in the transcript (strict substring, then loose token run). */
 export function filterEvidenceAgainstTranscript(
   evidence: string[],
   transcriptBlob: string
 ): string[] {
-  const blob = transcriptBlob;
-  return evidence.filter((q) => {
-    const n = normalizeForMatch(q);
-    return n.length >= 8 && blob.includes(n);
-  });
+  const looseBlob = normalizeLooseTokens(transcriptBlob);
+  return evidence.filter((q) => quoteMatchesTranscript(q, transcriptBlob, looseBlob));
 }
 
 /**
