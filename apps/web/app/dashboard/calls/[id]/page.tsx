@@ -24,7 +24,16 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
     .limit(1)
     .maybeSingle();
 
-  const [callRes, signalsRes, evalRes, participantsRes] = await Promise.all([
+  const wfRunQuery = supabase
+    .from("workflow_automation_scan_runs")
+    .select("id")
+    .eq("status", "succeeded")
+    .order("finished_at", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const [callRes, signalsRes, evalRes, participantsRes, wfRunRes] = await Promise.all([
     supabase.from("calls").select("*").eq("id", id).single(),
     signalsQuery,
     supabase
@@ -38,7 +47,22 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
       .from("participants")
       .select("name, role")
       .eq("call_id", id),
+    wfRunQuery,
   ]);
+
+  let workflowScanSnippets: string[] | null = null;
+  if (!wfRunRes.error && wfRunRes.data?.id) {
+    const { data: wfHit } = await supabase
+      .from("workflow_automation_scan_hits")
+      .select("snippets")
+      .eq("run_id", wfRunRes.data.id)
+      .eq("call_id", id)
+      .maybeSingle();
+    const arr = wfHit?.snippets;
+    if (Array.isArray(arr) && arr.length > 0 && arr.every((x) => typeof x === "string")) {
+      workflowScanSnippets = arr as string[];
+    }
+  }
 
   if (callRes.error || !callRes.data) {
     return (
@@ -85,6 +109,17 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
           &middot; Source: {call.source}
         </p>
       </div>
+
+      {workflowScanSnippets ? (
+        <div className="card" style={{ marginBottom: 20, padding: "14px 18px" }}>
+          <p className="page-meta" style={{ margin: 0 }}>
+            <strong>Workflow + automation (prospect, latest scan):</strong>{" "}
+            {workflowScanSnippets[0].length > 200
+              ? `${workflowScanSnippets[0].slice(0, 197)}…`
+              : workflowScanSnippets[0]}
+          </p>
+        </div>
+      ) : null}
 
       <CallDetailTabs
         evaluation={evaluation as Parameters<typeof CallDetailTabs>[0]["evaluation"]}

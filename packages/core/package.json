@@ -3,6 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
+    "scan:workflow-automation": "npx tsx src/scripts/runQualifiedWorkflowAutomationScan.ts",
     "test:no-show": "npx tsx --test src/ingestion/noShow.test.ts",
     "test:console-use-cases": "npx tsx --test src/consoleUseCases/evidenceGuard.test.ts src/consoleUseCases/goldenSet.test.ts"
   },
@@ -13,6 +14,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.97.0",
+    "dotenv": "^17.3.1",
     "openai": "^6.24.0",
     "zod": "^4.3.6"
   }

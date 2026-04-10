@@ -22,6 +22,12 @@ export default function DashboardLayout({
             </svg>
             GEO Analysis
           </Link>
+          <Link href="/dashboard/workflow-scan" className="sidebar-link">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 4h8M4 8h8M4 12h5" />
+            </svg>
+            Workflow scan
+          </Link>
         </nav>
       </aside>
       <main className="main-content">
