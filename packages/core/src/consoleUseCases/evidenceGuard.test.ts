@@ -4,6 +4,7 @@ import {
   applyEvidenceGuardToUseCases,
   buildTranscriptMatchBlob,
   filterEvidenceAgainstTranscript,
+  filterVendorDefinitionEvidence,
 } from "./evidenceGuard";
 import type { ConsoleUseCasesLlmOutput } from "./schemas";
 
@@ -53,6 +54,58 @@ test("applyEvidenceGuardToUseCases drops hallucinated item entirely", () => {
     ],
   };
   const out = applyEvidenceGuardToUseCases(parsed, utterances);
+  assert.equal(out.items.length, 1);
+  assert.equal(out.items[0].id, "itsm_service_desk");
+});
+
+test("filterVendorDefinitionEvidence drops Console-is pitch line", () => {
+  const pitch =
+    "Console is an AI co-worker to automate internal support requests, right?";
+  const kept = filterVendorDefinitionEvidence([pitch], "console");
+  assert.equal(kept.length, 0);
+});
+
+test("filterVendorDefinitionEvidence keeps legitimate customer automation quote", () => {
+  const q =
+    "We want to automate approvals across ServiceNow and Okta for our team.";
+  const kept = filterVendorDefinitionEvidence([q], "console");
+  assert.equal(kept.length, 1);
+  assert.equal(kept[0], q);
+});
+
+test("filterVendorDefinitionEvidence keeps customer evaluating Console is compatible", () => {
+  const q = "We need to know if Console is compatible with our Entra setup.";
+  const kept = filterVendorDefinitionEvidence([q], "console");
+  assert.equal(kept.length, 1);
+});
+
+test("applyEvidenceGuardToUseCases drops workflow_automation and ai_assisted_support when only pitch evidence", () => {
+  const utterances = [
+    u(
+      "Console is an AI co-worker to automate internal support requests, right? We also have a lot of tickets.",
+      0
+    ),
+  ];
+  const parsed: ConsoleUseCasesLlmOutput = {
+    items: [
+      {
+        id: "workflow_automation",
+        confidence: "medium",
+        evidence: ["Console is an AI co-worker to automate internal support requests, right?"],
+      },
+      {
+        id: "ai_assisted_support",
+        confidence: "medium",
+        evidence: ["Console is an AI co-worker to automate internal support requests, right?"],
+      },
+      {
+        id: "itsm_service_desk",
+        confidence: "high",
+        evidence: ["We also have a lot of tickets"],
+      },
+    ],
+  };
+  const out = applyEvidenceGuardToUseCases(parsed, utterances, "console");
   assert.equal(out.items.length, 1);
   assert.equal(out.items[0].id, "itsm_service_desk");
 });
