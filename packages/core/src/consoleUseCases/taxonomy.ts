@@ -1,6 +1,8 @@
 /**
  * Console product use-case taxonomy v1 (closed enum).
  * Bump schema_version and prompt file when adding or renaming ids.
+ *
+ * `workflow_automation` = product “workflow automation” (cross-tool / approval flows), not generic RPA.
  */
 export const CONSOLE_USE_CASE_IDS = [
   "employee_lifecycle",
@@ -26,7 +28,7 @@ export const CONSOLE_USE_CASE_LABELS: Record<ConsoleUseCaseId, string> = {
   device_mdm: "Devices & MDM",
   identity_governance: "Identity, SSO & provisioning",
   msp_multi_tenant: "MSP / multi-tenant IT",
-  workflow_automation: "Cross-tool workflows & automation",
+  workflow_automation: "Workflow automation (cross-tool orchestration & approvals)",
   compliance_audit: "Compliance & access reviews",
   ai_assisted_support: "AI-assisted IT / support",
 };

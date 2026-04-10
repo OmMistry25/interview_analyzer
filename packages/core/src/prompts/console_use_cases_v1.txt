@@ -23,7 +23,7 @@ You classify **Console product use cases** discussed on a sales/discovery call. 
 - **device_mdm**: Laptops, mobile devices, MDM, endpoint management, device compliance.
 - **identity_governance**: SSO, IdP, provisioning/deprovisioning, groups/entitlements, lifecycle beyond a single product name drop.
 - **msp_multi_tenant**: MSP, managed service provider, serving multiple customers/tenants, partner-led IT.
-- **workflow_automation**: Cross-system workflows, orchestration, approvals spanning multiple tools (not generic “efficiency” alone).
+- **workflow_automation** (workflow automation): Cross-system workflows, orchestration, approvals spanning multiple tools (not generic “efficiency” alone).
 - **compliance_audit**: Audits, access reviews, compliance programs, least-privilege reviews, regulatory drivers.
 - **ai_assisted_support**: AI for IT/support agents or employees (copilot, draft replies, automated triage) as a stated goal.
 
