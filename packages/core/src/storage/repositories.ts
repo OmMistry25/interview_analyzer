@@ -243,15 +243,17 @@ export async function persistExtractedSignals(
     signalsJson: unknown;
     qualityChecks?: unknown;
     dealBriefJson?: unknown | null;
+    consoleUseCasesJson?: unknown | null;
   }
 ): Promise<{ id: string }> {
-  // Omit deal_brief_json entirely when undefined so DBs without the column still work (flag off).
+  // Omit optional jsonb columns when undefined so DBs without migrations still work (flags off).
   const row: {
     processing_run_id: string;
     call_id: string;
     signals_json: unknown;
     quality_checks: unknown | null;
     deal_brief_json?: unknown | null;
+    console_use_cases_json?: unknown | null;
   } = {
     processing_run_id: params.processingRunId,
     call_id: params.callId,
@@ -260,6 +262,9 @@ export async function persistExtractedSignals(
   };
   if (params.dealBriefJson !== undefined) {
     row.deal_brief_json = params.dealBriefJson;
+  }
+  if (params.consoleUseCasesJson !== undefined) {
+    row.console_use_cases_json = params.consoleUseCasesJson;
   }
 
   const { data, error } = await db.from("extracted_signals").insert(row)

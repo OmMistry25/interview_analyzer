@@ -6,6 +6,7 @@ import {
   formatCompetitorsMentionedForDigest,
   shouldShowParticipantTitle,
 } from "@transcript-evaluator/core/src/formatting/slackPayload";
+import { consoleUseCaseLabelFromJson } from "@transcript-evaluator/core/src/consoleUseCases/taxonomy";
 import { stackCatalogLabel } from "@transcript-evaluator/core/src/stack/catalog";
 
 interface BantScore {
@@ -104,6 +105,19 @@ interface Participant {
   role: string;
 }
 
+interface ConsoleUseCasesItem {
+  id: string;
+  confidence: string;
+  evidence?: string[];
+  summary?: string;
+}
+
+interface ConsoleUseCasesJson {
+  schema_version?: number;
+  items?: ConsoleUseCasesItem[];
+  skipped_reason?: string;
+}
+
 interface DealBriefJson {
   contacts?: { name: string; role_summary: string; evidence?: string[] }[];
   stack?: { summary: string; tools?: string[]; evidence?: string[] };
@@ -120,6 +134,8 @@ interface CallDetailTabsProps {
   evaluation: EvaluationJson | null;
   signals: ExtractedSignals | null;
   dealBrief?: Record<string, unknown> | null;
+  /** When set (including null), show Console use cases UI; omit when dashboard env disables the column. */
+  consoleUseCases?: ConsoleUseCasesJson | null;
   participants: Participant[];
   aeName: string | null;
   accountName: string | null;
@@ -129,6 +145,7 @@ export default function CallDetailTabs({
   evaluation,
   signals,
   dealBrief,
+  consoleUseCases,
   participants,
   aeName,
   accountName,
@@ -173,11 +190,12 @@ export default function CallDetailTabs({
       {view === "brief" && brief ? (
         <BriefView brief={brief} />
       ) : view === "ae" ? (
-        <AEView evaluation={evaluation} signals={signals} />
+        <AEView evaluation={evaluation} signals={signals} consoleUseCases={consoleUseCases} />
       ) : (
         <GrowthView
           evaluation={evaluation}
           signals={signals}
+          consoleUseCases={consoleUseCases}
           participants={participants}
           aeName={aeName}
           accountName={accountName}
@@ -288,9 +306,11 @@ function BriefView({ brief }: { brief: DealBriefJson }) {
 function AEView({
   evaluation,
   signals,
+  consoleUseCases,
 }: {
   evaluation: EvaluationJson | null;
   signals: ExtractedSignals | null;
+  consoleUseCases?: ConsoleUseCasesJson | null;
 }) {
   return (
     <>
@@ -317,6 +337,8 @@ function AEView({
           <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 20 }}>
             {evaluation.stage_1_reasoning}
           </p>
+
+          {consoleUseCases !== undefined ? <ConsoleUseCasesSection data={consoleUseCases} /> : null}
 
           {evaluation.s1_opportunity_checklist && (
             <div className="mb-20">
@@ -478,15 +500,81 @@ function growthTechStackLabels(signals: ExtractedSignals): string[] {
   return out;
 }
 
+function ConsoleUseCasesSection({
+  data,
+}: {
+  data: ConsoleUseCasesJson | null;
+}) {
+  const items = data?.items ?? [];
+  const skipped = data?.skipped_reason;
+
+  let body: React.ReactNode;
+  if (skipped === "no_show") {
+    body = (
+      <span className="digest-value" style={{ color: "var(--text-secondary)" }}>
+        — (no transcript)
+      </span>
+    );
+  } else if (items.length > 0) {
+    body = (
+      <div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          {items.map((it, idx) => (
+            <span
+              key={`${it.id}-${idx}`}
+              className="badge badge-blue"
+              style={{ fontSize: 12, fontWeight: 400 }}
+              title={it.summary ?? undefined}
+            >
+              {consoleUseCaseLabelFromJson(it.id)} ({it.confidence})
+            </span>
+          ))}
+        </div>
+        <ul className="list-clean mt-8" style={{ fontSize: 13, color: "var(--text-secondary)" }}>
+          {items.map((it, evIdx) =>
+            it.evidence && it.evidence.length > 0 ? (
+              <li key={`${it.id}-ev-${evIdx}`}>
+                <strong>{consoleUseCaseLabelFromJson(it.id)}:</strong>{" "}
+                {it.evidence.map((q, i) => (
+                  <span key={i} style={{ display: "block", marginTop: 4, fontStyle: "italic" }}>
+                    &ldquo;{q}&rdquo;
+                  </span>
+                ))}
+              </li>
+            ) : null
+          )}
+        </ul>
+      </div>
+    );
+  } else {
+    body = (
+      <span className="digest-value" style={{ color: "var(--text-secondary)" }}>
+        —
+      </span>
+    );
+  }
+
+  return (
+    <div className="mb-12">
+      <span className="digest-label" style={{ display: "block", marginBottom: 8 }}>
+        Console use cases
+      </span>
+      {body}
+    </div>
+  );
+}
+
 function GrowthView({
   evaluation,
   signals,
+  consoleUseCases,
   participants,
   aeName,
   accountName,
 }: {
   evaluation: EvaluationJson | null;
   signals: ExtractedSignals | null;
+  consoleUseCases?: ConsoleUseCasesJson | null;
   participants: Participant[];
   aeName: string | null;
   accountName: string | null;
@@ -537,6 +625,8 @@ function GrowthView({
             );
           })()}
       </div>
+
+      {consoleUseCases !== undefined ? <ConsoleUseCasesSection data={consoleUseCases} /> : null}
 
       <div className="mb-12">
         <span className="digest-label" style={{ display: "block", marginBottom: 8 }}>

@@ -10,23 +10,19 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
   const supabase = await createSupabaseServerClient();
   // Default on; set NEXT_PUBLIC_DEAL_BRIEF_UI_ENABLED=false to hide tab / skip selecting deal_brief_json
   const dealBriefUiEnabled = process.env.NEXT_PUBLIC_DEAL_BRIEF_UI_ENABLED !== "false";
+  const consoleUseCasesUiEnabled = process.env.NEXT_PUBLIC_CONSOLE_USE_CASES_UI_ENABLED !== "false";
 
-  // Use literal .select() strings so Supabase generated types accept the query (dynamic string breaks TS).
-  const signalsQuery = dealBriefUiEnabled
-    ? supabase
-        .from("extracted_signals")
-        .select("signals_json, deal_brief_json")
-        .eq("call_id", id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle()
-    : supabase
-        .from("extracted_signals")
-        .select("signals_json")
-        .eq("call_id", id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .maybeSingle();
+  const signalsSelectFields = ["signals_json"];
+  if (dealBriefUiEnabled) signalsSelectFields.push("deal_brief_json");
+  if (consoleUseCasesUiEnabled) signalsSelectFields.push("console_use_cases_json");
+
+  const signalsQuery = supabase
+    .from("extracted_signals")
+    .select(signalsSelectFields.join(", "))
+    .eq("call_id", id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
   const [callRes, signalsRes, evalRes, participantsRes] = await Promise.all([
     supabase.from("calls").select("*").eq("id", id).single(),
@@ -53,13 +49,18 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
   }
 
   const call = callRes.data;
-  const signals = signalsRes.data?.signals_json as Record<string, unknown> | null;
+  const signalsRow = signalsRes.data as {
+    signals_json?: unknown;
+    deal_brief_json?: unknown;
+    console_use_cases_json?: unknown;
+  } | null;
+  const signals = (signalsRow?.signals_json ?? null) as Record<string, unknown> | null;
   const dealBrief = dealBriefUiEnabled
-    ? ((signalsRes.data as { deal_brief_json?: unknown } | null)?.deal_brief_json as Record<
-        string,
-        unknown
-      > | null)
+    ? ((signalsRow?.deal_brief_json ?? null) as Record<string, unknown> | null)
     : null;
+  const consoleUseCases = consoleUseCasesUiEnabled
+    ? ((signalsRow?.console_use_cases_json ?? null) as Record<string, unknown> | null)
+    : undefined;
   const evaluation = evalRes.data?.evaluation_json as Record<string, unknown> | null;
   const participants = (participantsRes.data ?? []) as { name: string; role: string }[];
 
@@ -89,6 +90,7 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
         evaluation={evaluation as Parameters<typeof CallDetailTabs>[0]["evaluation"]}
         signals={signals as Parameters<typeof CallDetailTabs>[0]["signals"]}
         dealBrief={dealBrief}
+        consoleUseCases={consoleUseCases as Parameters<typeof CallDetailTabs>[0]["consoleUseCases"]}
         participants={participants}
         aeName={aeParticipant?.name ?? null}
         accountName={accountName !== "unknown" ? accountName : null}

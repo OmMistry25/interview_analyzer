@@ -4,6 +4,12 @@ import { mapFathomToNormalized, buildMeetingContext, parseMeetingTitle, KNOWN_AE
 import { extractProspectEmailDomainFromParticipants, resolveProspectDisplayName } from "@transcript-evaluator/core/src/ingestion/prospectIdentity";
 import { extractSignals } from "@transcript-evaluator/core/src/extraction/extractor";
 import { extractDealBrief } from "@transcript-evaluator/core/src/dealBrief/extractor";
+import { extractConsoleUseCases } from "@transcript-evaluator/core/src/consoleUseCases/extractor";
+import {
+  buildSkippedConsoleUseCases,
+  CONSOLE_USE_CASE_SCHEMA_VERSION,
+  type ConsoleUseCasesDocument,
+} from "@transcript-evaluator/core/src/consoleUseCases/schemas";
 import { evaluateSignals } from "@transcript-evaluator/core/src/evaluation/evaluator";
 import { alignChaseS1OverallStatus, crossCheckEvaluation } from "@transcript-evaluator/core/src/evaluation/rulesEngine";
 import { lookupCompanyEnrichment } from "@transcript-evaluator/core/src/enrichment/apollo";
@@ -19,7 +25,7 @@ import type { EvaluationResult } from "@transcript-evaluator/core/src/evaluation
 import type { ExtractedSignals } from "@transcript-evaluator/core/src/extraction/schemas";
 import type { MeetingContext, NormalizedCall } from "@transcript-evaluator/core/src/types/normalized";
 import type { DealBrief } from "@transcript-evaluator/core/src/dealBrief/schemas";
-import { isDealBriefPipelineEnabled } from "@transcript-evaluator/core/src/config/featureFlags";
+import { isConsoleUseCasesPipelineEnabled, isDealBriefPipelineEnabled } from "@transcript-evaluator/core/src/config/featureFlags";
 import {
   getWebhookEvent,
   upsertCall,
@@ -61,12 +67,16 @@ async function extractEvaluateAndTune(
   evaluation: EvaluationResult;
   dealBrief: DealBrief | null;
   noShow: boolean;
+  consoleUseCases: ConsoleUseCasesDocument | null;
 }> {
+  const useCasesPipeline = isConsoleUseCasesPipelineEnabled();
+
   if (isNoShowCall(normalized)) {
     console.log("  No-show transcript — skipping LLM extract, deal brief, and evaluate.");
     const signals = buildNoShowExtractedSignals(normalized, meetingCtx);
     const evaluation = buildNoShowEvaluation();
-    return { signals, evaluation, dealBrief: null, noShow: true };
+    const consoleUseCases = useCasesPipeline ? buildSkippedConsoleUseCases("no_show") : null;
+    return { signals, evaluation, dealBrief: null, noShow: true, consoleUseCases };
   }
 
   console.log(`  Extracting signals... (prospect: ${meetingCtx.prospectCompany ?? "unknown"})`);
@@ -88,6 +98,21 @@ async function extractEvaluateAndTune(
     console.log("  Deal brief pipeline off (DEAL_BRIEF_ENABLED=false).");
   }
 
+  let consoleUseCases: ConsoleUseCasesDocument | null = null;
+  if (useCasesPipeline) {
+    try {
+      console.log("  Extracting Console use cases...");
+      consoleUseCases = await extractConsoleUseCases(normalized.utterances, meetingCtx, signals);
+      console.log(`  Console use cases: ${consoleUseCases.items.length} label(s).`);
+    } catch (ucErr) {
+      const msg = ucErr instanceof Error ? ucErr.message : String(ucErr);
+      console.warn(`  Console use cases failed: ${msg.slice(0, 200)}`);
+      consoleUseCases = { schema_version: CONSOLE_USE_CASE_SCHEMA_VERSION, items: [] };
+    }
+  } else {
+    console.log("  Console use cases pipeline off (CONSOLE_USE_CASES_ENABLED≠true).");
+  }
+
   console.log("  Evaluating (BANT)...");
   const evaluation = await evaluateSignals(signals, meetingCtx, "gpt-4o", dealBrief);
   console.log(`  Evaluation: ${evaluation.overall_status} (score: ${evaluation.score}, stage1: ${evaluation.stage_1_probability}%)`);
@@ -99,7 +124,7 @@ async function extractEvaluateAndTune(
   }
   alignChaseS1OverallStatus(evaluation);
 
-  return { signals, evaluation, dealBrief, noShow: false };
+  return { signals, evaluation, dealBrief, noShow: false, consoleUseCases };
 }
 
 export async function processJob(
@@ -192,14 +217,19 @@ async function processFathomMeeting(
         (meetingCtx.prospectEmailDomain ? ` · domain: ${meetingCtx.prospectEmailDomain}` : "")
     );
 
-    const { signals, evaluation, dealBrief, noShow } = await extractEvaluateAndTune(normalized, meetingCtx);
+    const { signals, evaluation, dealBrief, noShow, consoleUseCases } = await extractEvaluateAndTune(
+      normalized,
+      meetingCtx
+    );
 
     const briefEnabled = isDealBriefPipelineEnabled();
+    const useCasesEnabled = isConsoleUseCasesPipelineEnabled();
     await persistExtractedSignals(db, {
       processingRunId: run.id,
       callId: call.id,
       signalsJson: signals,
       dealBriefJson: briefEnabled ? dealBrief : undefined,
+      consoleUseCasesJson: useCasesEnabled ? consoleUseCases : undefined,
     });
 
     await persistEvaluation(db, {
@@ -216,7 +246,10 @@ async function processFathomMeeting(
 
     const callbackUrl = payload.callback_url as string | undefined;
     if (callbackUrl) {
-      await fireCallback(callbackUrl, evaluation, signals, meetingCtx, dealBrief, { noShow });
+      await fireCallback(callbackUrl, evaluation, signals, meetingCtx, dealBrief, {
+        noShow,
+        consoleUseCases: useCasesEnabled ? consoleUseCases : undefined,
+      });
     }
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
@@ -250,6 +283,7 @@ async function fireCallback(
       signals_summary: signals.call_summary,
       participant_titles: signals.participant_titles,
       deal_brief: dealBrief,
+      console_use_cases: slackOptions?.consoleUseCases ?? null,
     },
   };
 
@@ -443,14 +477,19 @@ async function reprocessCall(
   console.log(`  Processing run: ${run.id}`);
 
   try {
-    const { signals, evaluation, dealBrief, noShow } = await extractEvaluateAndTune(normalized, meetingCtx);
+    const { signals, evaluation, dealBrief, noShow, consoleUseCases } = await extractEvaluateAndTune(
+      normalized,
+      meetingCtx
+    );
 
     const briefEnabled = isDealBriefPipelineEnabled();
+    const useCasesEnabled = isConsoleUseCasesPipelineEnabled();
     await persistExtractedSignals(db, {
       processingRunId: run.id,
       callId,
       signalsJson: signals,
       dealBriefJson: briefEnabled ? dealBrief : undefined,
+      consoleUseCasesJson: useCasesEnabled ? consoleUseCases : undefined,
     });
 
     await persistEvaluation(db, {

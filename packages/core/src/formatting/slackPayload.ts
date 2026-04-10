@@ -1,5 +1,7 @@
 import type { EvaluationResult } from "../evaluation/schemas";
 import type { ExtractedSignals } from "../extraction/schemas";
+import type { ConsoleUseCasesDocument } from "../consoleUseCases/schemas";
+import { consoleUseCaseLabel } from "../consoleUseCases/taxonomy";
 import { stackCatalogLabel } from "../stack/catalog";
 
 interface SlackContext {
@@ -11,6 +13,15 @@ interface SlackContext {
 export interface SlackFormatOptions {
   /** Minimal Zapier/Slack body: status + no-show only (no BANT, stack, checklist). */
   noShow?: boolean;
+  /** When pipeline enabled; shown on Growth digest under Tech stack when items exist. */
+  consoleUseCases?: ConsoleUseCasesDocument | null;
+}
+
+function formatConsoleUseCasesForDigest(doc: ConsoleUseCasesDocument | null | undefined): string | null {
+  if (!doc?.items?.length) return null;
+  return doc.items
+    .map((it) => `${consoleUseCaseLabel(it.id)} (${it.confidence})`)
+    .join("; ");
 }
 
 function scorePips(score: number): string {
@@ -98,6 +109,7 @@ export function formatGrowthTeamDigest(
 
   const stackLine = formatCanonicalStackForDigest(signals);
   const competitorsLine = formatCompetitorsMentionedForDigest(signals);
+  const useCasesLine = formatConsoleUseCasesForDigest(options?.consoleUseCases ?? null);
 
   const text = [
     `*${ae}* just met with *${account}*`,
@@ -107,6 +119,7 @@ export function formatGrowthTeamDigest(
     "",
     `*Tech stack*`,
     stackLine || "_(none detected)_",
+    ...(useCasesLine ? ["", `*Console use cases*`, useCasesLine] : []),
     "",
     `*Competitors*`,
     competitorsLine || "_(none detected)_",
