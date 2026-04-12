@@ -1,29 +1,25 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 /**
- * Lexical scan: prospect utterances only; both \\bworkflow\\b and \\bautomation\\b (NFKC + lowercase).
- * Same utterance: any distance. Across consecutive prospect lines: merge 2–3 adjacent rows; token-start
- * distance between the two lemmas must be ≤120 chars.
+ * Lexical scan: prospect utterances only. Counts **adjacent** English phrases only:
+ * `workflow` + whitespace + `automation`, or `workflow-automation` (NFKC-normalized text, case-insensitive).
+ * Words may not appear in reverse order or with other words between. Prospect lines are joined in order
+ * with a single space so a phrase split across consecutive prospect turns still matches.
  */
 export const SCANNER_VERSION =
-  "wa-prospect-v1:nfkc-lowercase;single-utterance-any-distance;adjacent-2-3-prospect-lines;max120chars-between-token-starts";
+  "wa-prospect-v2:nfkc-casefold;adjacent-phrase-only;workflow[-\\s]+automation-order;joined-prospect-lines";
 
 export type ProspectUtterance = { text: string; speakerLabel: string };
 
 const SNIPPET_MAX = 280;
-const MULTI_WINDOW_CHAR_GAP = 120;
+const SNIPPET_RADIUS = 90;
 const HIT_INSERT_BATCH = 50;
+
+/** Hyphen or whitespace only between the two words (no other tokens). Order: workflow → automation. */
+const WORKFLOW_AUTOMATION_PHRASE_SOURCE = "(?:\\bworkflow-automation\\b|\\bworkflow\\s+automation\\b)";
 
 function normalizeForMatch(s: string): string {
   return s.normalize("NFKC").toLowerCase();
-}
-
-function hasWordWorkflow(lower: string): boolean {
-  return /\bworkflow\b/.test(lower);
-}
-
-function hasWordAutomation(lower: string): boolean {
-  return /\bautomation\b/.test(lower);
 }
 
 function truncateSnippet(s: string): string {
@@ -32,76 +28,41 @@ function truncateSnippet(s: string): string {
   return `${t.slice(0, SNIPPET_MAX - 3)}...`;
 }
 
-/** Minimum |start(workflow) - start(automation)| over all lemma occurrences. */
-function minTokenStartDistance(lower: string): number | null {
-  const wStarts: number[] = [];
-  const aStarts: number[] = [];
-  const wRe = /\bworkflow\b/g;
-  const aRe = /\bautomation\b/g;
-  let m: RegExpExecArray | null;
-  while ((m = wRe.exec(lower)) != null) wStarts.push(m.index);
-  while ((m = aRe.exec(lower)) != null) aStarts.push(m.index);
-  if (wStarts.length === 0 || aStarts.length === 0) return null;
-  let min = Infinity;
-  for (const wi of wStarts) {
-    for (const ai of aStarts) {
-      const d = Math.abs(wi - ai);
-      if (d < min) min = d;
-    }
+/**
+ * Join consecutive prospect utterances (transcript order) and count non-overlapping phrase matches.
+ */
+export function prospectTextMentionsWorkflowAndAutomation(utterances: ProspectUtterance[]): {
+  hit: boolean;
+  snippets: string[];
+  phraseMentionCount: number;
+} {
+  const parts = utterances.map((u) => (u.text ?? "").trim()).filter(Boolean);
+  if (parts.length === 0) {
+    return { hit: false, snippets: [], phraseMentionCount: 0 };
   }
-  return min === Infinity ? null : min;
-}
 
-function bothInSameUtterance(raw: string): boolean {
-  const lower = normalizeForMatch(raw);
-  return hasWordWorkflow(lower) && hasWordAutomation(lower);
-}
-
-function bothInMergedWindow(rawMerged: string): boolean {
-  const lower = normalizeForMatch(rawMerged);
-  if (!hasWordWorkflow(lower) || !hasWordAutomation(lower)) return false;
-  const dist = minTokenStartDistance(lower);
-  if (dist == null) return false;
-  return dist <= MULTI_WINDOW_CHAR_GAP;
-}
-
-export function prospectTextMentionsWorkflowAndAutomation(
-  utterances: ProspectUtterance[]
-): { hit: boolean; snippets: string[] } {
+  const joinedRaw = parts.join(" ");
+  const haystack = normalizeForMatch(joinedRaw);
+  const re = new RegExp(WORKFLOW_AUTOMATION_PHRASE_SOURCE, "gi");
   const snippets: string[] = [];
-
-  for (const u of utterances) {
-    const raw = u.text ?? "";
-    if (!raw.trim()) continue;
-    if (bothInSameUtterance(raw)) {
-      snippets.push(truncateSnippet(raw));
-      if (snippets.length >= 3) return { hit: true, snippets };
+  let phraseMentionCount = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(haystack)) != null) {
+    phraseMentionCount++;
+    if (snippets.length < 3) {
+      const start = m.index;
+      const end = start + m[0].length;
+      const from = Math.max(0, start - SNIPPET_RADIUS);
+      const to = Math.min(haystack.length, end + SNIPPET_RADIUS);
+      snippets.push(truncateSnippet(haystack.slice(from, to)));
     }
   }
 
-  if (snippets.length > 0) {
-    return { hit: true, snippets: snippets.slice(0, 3) };
-  }
-
-  if (utterances.length < 2) {
-    return { hit: false, snippets: [] };
-  }
-
-  const maxW = Math.min(3, utterances.length);
-  for (let w = 2; w <= maxW; w++) {
-    for (let i = 0; i + w <= utterances.length; i++) {
-      const slice = utterances.slice(i, i + w);
-      const parts = slice.map((u) => (u.text ?? "").trim()).filter(Boolean);
-      if (parts.length < 2) continue;
-      const merged = parts.join(" ");
-      if (bothInMergedWindow(merged)) {
-        snippets.push(truncateSnippet(merged));
-        if (snippets.length >= 3) return { hit: true, snippets };
-      }
-    }
-  }
-
-  return { hit: snippets.length > 0, snippets: snippets.slice(0, 3) };
+  return {
+    hit: phraseMentionCount > 0,
+    snippets,
+    phraseMentionCount,
+  };
 }
 
 export async function loadProspectUtterances(
@@ -191,15 +152,26 @@ export async function runQualifiedWorkflowAutomationScan(db: SupabaseClient): Pr
   let hitCount = 0;
 
   try {
-    const hitRows: { run_id: string; call_id: string; snippets: string[] }[] = [];
+    const hitRows: {
+      run_id: string;
+      call_id: string;
+      snippets: string[];
+      phrase_mention_count: number;
+    }[] = [];
 
     for (const callId of qualifiedCallIds) {
       const prospectUtts = await loadProspectUtterances(db, callId);
-      const { hit, snippets } = prospectTextMentionsWorkflowAndAutomation(prospectUtts);
+      const { hit, snippets, phraseMentionCount } =
+        prospectTextMentionsWorkflowAndAutomation(prospectUtts);
       scannedCount++;
-      if (hit && snippets.length > 0) {
+      if (hit && phraseMentionCount > 0) {
         hitCount++;
-        hitRows.push({ run_id: runId, call_id: callId, snippets });
+        hitRows.push({
+          run_id: runId,
+          call_id: callId,
+          snippets,
+          phrase_mention_count: phraseMentionCount,
+        });
       }
     }
 

@@ -18,6 +18,7 @@ type CallEmbed = { id: string; title: string; start_time: string | null };
 interface HitRow {
   call_id: string;
   snippets: string[];
+  phrase_mention_count?: number | null;
   calls: CallEmbed | CallEmbed[] | null;
 }
 
@@ -55,7 +56,7 @@ export default async function WorkflowScanPage() {
   if (run?.id) {
     const { data: hitsData, error: hitsError } = await supabase
       .from("workflow_automation_scan_hits")
-      .select("call_id, snippets, calls ( id, title, start_time )")
+      .select("call_id, snippets, phrase_mention_count, calls ( id, title, start_time )")
       .eq("run_id", run.id)
       .order("created_at", { ascending: true });
 
@@ -72,14 +73,19 @@ export default async function WorkflowScanPage() {
   const scanned = run?.scanned_count ?? 0;
   const hitCount = run?.hit_count ?? 0;
   const rate = scanned > 0 ? ((hitCount / scanned) * 100).toFixed(1) : "—";
+  const totalPhraseMentions = hits.reduce(
+    (sum, h) => sum + (typeof h.phrase_mention_count === "number" ? h.phrase_mention_count : 1),
+    0
+  );
 
   return (
     <div className="page-container">
       <div className="page-header">
         <h1>Workflow + automation scan</h1>
         <p className="page-meta">
-          Qualified calls only; prospect (attendee) speech; both words <code>workflow</code> and{" "}
-          <code>automation</code> in a tight window — lexical match, no LLM.
+          Qualified calls only; prospect (attendee) speech; adjacent phrase{" "}
+          <code>workflow automation</code> or <code>workflow-automation</code> only (no other words
+          between; order preserved) — lexical match, no LLM.
         </p>
       </div>
 
@@ -106,8 +112,12 @@ export default async function WorkflowScanPage() {
                 <strong>Scanned:</strong> {run.scanned_count}
               </li>
               <li>
-                <strong>Hits:</strong> {run.hit_count}{" "}
+                <strong>Calls with phrase (hits):</strong> {run.hit_count}{" "}
                 {scanned > 0 ? <span className="page-meta">({rate}% of scanned)</span> : null}
+              </li>
+              <li>
+                <strong>Total phrase mentions:</strong> {totalPhraseMentions}{" "}
+                <span className="page-meta">(sum across hit calls)</span>
               </li>
               <li>
                 <strong>Scanner version:</strong>{" "}
@@ -138,6 +148,7 @@ export default async function WorkflowScanPage() {
                   <thead>
                     <tr>
                       <th>Call</th>
+                      <th>Mentions</th>
                       <th>Snippets</th>
                     </tr>
                   </thead>
@@ -147,6 +158,8 @@ export default async function WorkflowScanPage() {
                       const title = call?.title ?? "Untitled";
                       const callHref = `/dashboard/calls/${h.call_id}`;
                       const snippets = Array.isArray(h.snippets) ? h.snippets : [];
+                      const mentionCount =
+                        typeof h.phrase_mention_count === "number" ? h.phrase_mention_count : 1;
                       return (
                         <tr key={h.call_id}>
                           <td>
@@ -157,6 +170,7 @@ export default async function WorkflowScanPage() {
                               </div>
                             ) : null}
                           </td>
+                          <td>{mentionCount}</td>
                           <td>
                             <ul className="list-clean" style={{ margin: 0 }}>
                               {snippets.slice(0, 3).map((s, i) => (
