@@ -5,6 +5,7 @@ import type { ExtractedSignals as CoreExtractedSignals } from "@transcript-evalu
 import {
   formatCompetitorsMentionedForDigest,
   shouldShowParticipantTitle,
+  shouldUseNoShowSlackLayout,
 } from "@transcript-evaluator/core/src/formatting/slackPayload";
 import { consoleUseCaseLabelFromJson } from "@transcript-evaluator/core/src/consoleUseCases/taxonomy";
 import { stackCatalogLabel } from "@transcript-evaluator/core/src/stack/catalog";
@@ -62,6 +63,11 @@ const S1_CHECKLIST_ROWS: { key: keyof S1OpportunityChecklistJson; label: string 
 
 function s1ChecklistYesCountFromRows(checklist: S1OpportunityChecklistJson): number {
   return S1_CHECKLIST_ROWS.filter(({ key }) => checklist[key].answer === "yes").length;
+}
+
+/** Stored `overall_status` stays Qualified/Needs Work/Unqualified; UI shows No show when copy clearly indicates prospect absence. */
+function evaluationDisplayStatus(evaluation: EvaluationJson): string {
+  return shouldUseNoShowSlackLayout(evaluation) ? "No show" : evaluation.overall_status;
 }
 
 interface SignalField {
@@ -317,8 +323,8 @@ function AEView({
       {evaluation && (
         <section className="card">
           <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 4, flexWrap: "wrap" }}>
-            <span className={`badge ${statusBadgeClass(evaluation.overall_status)}`} style={{ fontSize: 13 }}>
-              {evaluation.overall_status}
+            <span className={`badge ${statusBadgeClass(evaluationDisplayStatus(evaluation))}`} style={{ fontSize: 13 }}>
+              {evaluationDisplayStatus(evaluation)}
             </span>
             {evaluation.s1_type && evaluation.s1_type !== "not_s1" && (
               <span className={`badge ${evaluation.s1_type === "sell_s1" ? "badge-green" : "badge-amber"}`} style={{ fontSize: 12 }}>
@@ -594,10 +600,14 @@ function GrowthView({
     ? formatCompetitorsMentionedForDigest(signals as unknown as CoreExtractedSignals)
     : "";
 
+  const prospectAbsentUi = evaluation ? shouldUseNoShowSlackLayout(evaluation) : false;
+
   return (
     <section className="card" style={{ lineHeight: 1.8 }}>
       <p style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>
-        {aeName ?? "AE"} just met with {accountName ?? "Unknown Account"}
+        {prospectAbsentUi
+          ? `${aeName ?? "AE"} / ${accountName ?? "Unknown Account"} — prospect did not join`
+          : `${aeName ?? "AE"} just met with ${accountName ?? "Unknown Account"}`}
       </p>
 
       <div className="mb-12">
@@ -668,8 +678,8 @@ function GrowthView({
       <p className="digest-row">
         <span className="digest-label">Status: </span>
         {evaluation?.overall_status ? (
-          <span className={`badge ${statusBadgeClass(evaluation.overall_status)}`} style={{ fontSize: 14 }}>
-            {evaluation.overall_status}
+          <span className={`badge ${statusBadgeClass(evaluationDisplayStatus(evaluation))}`} style={{ fontSize: 14 }}>
+            {evaluationDisplayStatus(evaluation)}
           </span>
         ) : (
           <span className="digest-value">—</span>
@@ -742,6 +752,7 @@ function statusBadgeClass(status: string): string {
     Qualified: "badge-green",
     "Needs Work": "badge-amber",
     Unqualified: "badge-red",
+    "No show": "badge-gray",
   };
   return map[status] ?? "badge-gray";
 }

@@ -1,4 +1,10 @@
 import type { EvaluationResult } from "../evaluation/schemas";
+
+/** Minimal fields used to detect prospect absence (Slack compact layout + dashboard badge). */
+export type ProspectAbsentHeuristicInput = Pick<
+  EvaluationResult,
+  "call_notes" | "stage_1_reasoning" | "red_flags"
+>;
 import type { ExtractedSignals } from "../extraction/schemas";
 import type { ConsoleUseCasesDocument } from "../consoleUseCases/schemas";
 import { consoleUseCaseLabel } from "../consoleUseCases/taxonomy";
@@ -61,7 +67,7 @@ const PROSPECT_ABSENT_NEEDLES = [
  * When the model clearly describes a prospect no-show but the transcript is long (e.g. internal prep),
  * still use the compact Slack layout instead of a misleading full BANT digest.
  */
-export function shouldUseNoShowSlackLayout(evaluation: EvaluationResult): boolean {
+export function shouldUseNoShowSlackLayout(evaluation: ProspectAbsentHeuristicInput): boolean {
   const blob = [
     evaluation.call_notes,
     evaluation.stage_1_reasoning,
