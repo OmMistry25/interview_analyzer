@@ -22,6 +22,7 @@ import { lookupCompanyEnrichment } from "@transcript-evaluator/core/src/enrichme
 import {
   formatGrowthTeamDigest,
   formatAESlackMessage,
+  shouldUseNoShowSlackLayout,
   type SlackFormatOptions,
 } from "@transcript-evaluator/core/src/formatting/slackPayload";
 import { isNoShowCall } from "@transcript-evaluator/core/src/ingestion/noShow";
@@ -272,14 +273,21 @@ async function fireCallback(
   dealBrief: DealBrief | null,
   slackOptions?: SlackFormatOptions
 ): Promise<void> {
+  const slackOptsMerged: SlackFormatOptions = {
+    ...slackOptions,
+    noShow: Boolean(slackOptions?.noShow) || shouldUseNoShowSlackLayout(evaluation),
+  };
+
   const ctx = {
     aeName: meetingCtx.aeName,
     accountName: resolveCallbackAccountName(signals, meetingCtx.prospectCompany),
     meetingTitle: meetingCtx.meetingTitle,
+    prospectAttendeeName:
+      meetingCtx.externalAttendees?.find((a) => a.name?.trim())?.name?.trim() ?? null,
   };
 
-  const growthDigest = formatGrowthTeamDigest(evaluation, signals, ctx, slackOptions);
-  const aeMessage = formatAESlackMessage(evaluation, signals, ctx, slackOptions);
+  const growthDigest = formatGrowthTeamDigest(evaluation, signals, ctx, slackOptsMerged);
+  const aeMessage = formatAESlackMessage(evaluation, signals, ctx, slackOptsMerged);
 
   const body = {
     growth_team: growthDigest,
@@ -289,7 +297,7 @@ async function fireCallback(
       signals_summary: signals.call_summary,
       participant_titles: signals.participant_titles,
       deal_brief: dealBrief,
-      console_use_cases: slackOptions?.consoleUseCases ?? null,
+      console_use_cases: slackOptsMerged.consoleUseCases ?? null,
     },
   };
 

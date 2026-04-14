@@ -4,10 +4,15 @@ import type { ConsoleUseCasesDocument } from "../consoleUseCases/schemas";
 import { consoleUseCaseLabel } from "../consoleUseCases/taxonomy";
 import { stackCatalogLabel } from "../stack/catalog";
 
-interface SlackContext {
+/** Slack callback `growth_team` / `ae` payload; `overall_status` may be `"No show"` for compact no-show layout (Zapier filters may need updating). */
+export type SlackDigestOverallStatus = EvaluationResult["overall_status"] | "No show";
+
+export interface SlackContext {
   aeName: string | null;
   accountName: string | null;
   meetingTitle: string;
+  /** First external / prospect attendee display name when known (calendar). */
+  prospectAttendeeName?: string | null;
 }
 
 export interface SlackFormatOptions {
@@ -26,6 +31,61 @@ function formatConsoleUseCasesForDigest(doc: ConsoleUseCasesDocument | null | un
 
 function scorePips(score: number): string {
   return "●".repeat(score) + "○".repeat(5 - score);
+}
+
+const PROSPECT_ABSENT_NEEDLES = [
+  "absence of the prospect",
+  "did not attend",
+  "didn't attend",
+  "did not join",
+  "didn't join",
+  "prospect did not attend",
+  "prospect didn't attend",
+  "prospect never",
+  "prospect was absent",
+  "prospect was not present",
+  "prospect did not join",
+  "prospect didn't join",
+  "no prospect",
+  "no-show",
+  "no show",
+  "never joined",
+  "did not show",
+  "didn't show",
+  "nobody from",
+  "customer did not attend",
+  "attendee did not attend",
+] as const;
+
+/**
+ * When the model clearly describes a prospect no-show but the transcript is long (e.g. internal prep),
+ * still use the compact Slack layout instead of a misleading full BANT digest.
+ */
+export function shouldUseNoShowSlackLayout(evaluation: EvaluationResult): boolean {
+  const blob = [
+    evaluation.call_notes,
+    evaluation.stage_1_reasoning,
+    ...(evaluation.red_flags ?? []),
+  ]
+    .join("\n")
+    .toLowerCase();
+  return PROSPECT_ABSENT_NEEDLES.some((n) => blob.includes(n));
+}
+
+function formatNoShowSlackText(ctx: SlackContext): string {
+  const ae = ctx.aeName?.trim() || "The AE";
+  const account = ctx.accountName?.trim();
+  const attendee = ctx.prospectAttendeeName?.trim() || "the prospect";
+
+  const lines: string[] = [];
+  if (account) {
+    lines.push(`*${ae}* / *${account}* — *No show.* The prospect did not join, so there was no discovery conversation to score.`);
+  } else {
+    lines.push(`*${ae}* — *No show.* The prospect did not join, so there was no discovery conversation to score.`);
+  }
+  lines.push("");
+  lines.push(`*${ae}* to reschedule with *${attendee}*.`);
+  return `${lines.join("\n")}\n`;
 }
 
 function formatTechStackStructured(
@@ -89,9 +149,9 @@ export function formatGrowthTeamDigest(
       ae_name: ctx.aeName,
       account_name: ctx.accountName,
       meeting_title: ctx.meetingTitle,
-      overall_status: "Unqualified" as const,
+      overall_status: "No show",
       stage_1_probability: 0,
-      text: "*Status:* Unqualified\n*No show*",
+      text: formatNoShowSlackText(ctx),
     };
   }
 
@@ -141,6 +201,7 @@ export function formatGrowthTeamDigest(
     "",
     `*Timing* ${scorePips(b.timing.score)} (${b.timing.score}/5)`,
     b.timing.rationale,
+    "",
   ].join("\n");
 
   return {
@@ -164,9 +225,9 @@ export function formatAESlackMessage(
       ae_name: ctx.aeName,
       account_name: ctx.accountName,
       meeting_title: ctx.meetingTitle,
-      overall_status: "Unqualified" as const,
+      overall_status: "No show",
       stage_1_probability: 0,
-      text: "*Status:* Unqualified\n*No show*",
+      text: formatNoShowSlackText(ctx),
     };
   }
 
