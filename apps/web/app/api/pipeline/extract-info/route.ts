@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { parseMeetingTitle, KNOWN_AES } from "@transcript-evaluator/core/src/ingestion/mapping";
+import {
+  parseMeetingTitle,
+  KNOWN_AES,
+  canonicalizeAEName,
+} from "@transcript-evaluator/core/src/ingestion/mapping";
 import {
   extractProspectEmailDomainFromInvitees,
   isOurEmailDomain,
@@ -63,9 +67,11 @@ export async function POST(req: NextRequest) {
   }
 
   let aeName =
+    allNames.find((n) => canonicalizeAEName(n)) ??
     allNames.find((n) =>
       KNOWN_AES.some((ae) => n.toLowerCase().includes(ae.toLowerCase()))
-    ) ?? null;
+    ) ??
+    null;
 
   if (!aeName) {
     const consoleEmails: string[] = [];

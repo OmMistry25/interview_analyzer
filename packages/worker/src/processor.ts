@@ -1,6 +1,12 @@
 import { SupabaseClient } from "@supabase/supabase-js";
 import { isFathomMeeting } from "@transcript-evaluator/core/src/ingestion/fathomPayload";
-import { mapFathomToNormalized, buildMeetingContext, parseMeetingTitle, KNOWN_AES } from "@transcript-evaluator/core/src/ingestion/mapping";
+import {
+  mapFathomToNormalized,
+  buildMeetingContext,
+  parseMeetingTitle,
+  KNOWN_AES,
+  canonicalizeAEName,
+} from "@transcript-evaluator/core/src/ingestion/mapping";
 import { extractProspectEmailDomainFromParticipants, resolveProspectDisplayName } from "@transcript-evaluator/core/src/ingestion/prospectIdentity";
 import { extractSignals } from "@transcript-evaluator/core/src/extraction/extractor";
 import { extractDealBrief } from "@transcript-evaluator/core/src/dealBrief/extractor";
@@ -412,9 +418,11 @@ async function reprocessCall(
     .filter((p) => p.role === "ae")
     .map((p) => ({ name: p.name as string, email: (p.email as string) ?? null }));
 
-  const knownAE = internalAttendees.find((a) =>
-    KNOWN_AES.some((ae: string) => a.name.toLowerCase().includes(ae.toLowerCase()))
-  );
+  const knownAE =
+    internalAttendees.find((a) => canonicalizeAEName(a.name)) ??
+    internalAttendees.find((a) =>
+      KNOWN_AES.some((ae: string) => a.name.toLowerCase().includes(ae.toLowerCase()))
+    );
 
   const participantRows = (participants ?? []).map((p) => ({
     email: (p.email as string) ?? null,
@@ -436,7 +444,7 @@ async function reprocessCall(
     ourCompany: "Console",
     prospectCompany,
     prospectEmailDomain,
-    aeName: knownAE?.name ?? internalAttendees[0]?.name ?? null,
+    aeName: canonicalizeAEName(knownAE?.name ?? null) ?? knownAE?.name ?? internalAttendees[0]?.name ?? null,
     dealSegment: enrichment.segment,
     internalAttendees,
     externalAttendees: (participants ?? [])

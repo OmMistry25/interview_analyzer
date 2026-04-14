@@ -4,6 +4,8 @@
   "private": true,
   "scripts": {
     "scan:workflow-automation": "npx tsx src/scripts/runQualifiedWorkflowAutomationScan.ts",
+    "scan:teams-mentions": "npx tsx src/scripts/runTeamsMentionScan.ts",
+    "test:mapping-ae": "npx tsx --test src/ingestion/mapping.ae.test.ts",
     "test:no-show": "npx tsx --test src/ingestion/noShow.test.ts",
     "test:console-use-cases": "npx tsx --test src/consoleUseCases/evidenceGuard.test.ts src/consoleUseCases/goldenSet.test.ts"
   },

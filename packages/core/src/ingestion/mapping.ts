@@ -10,9 +10,33 @@ function parseTimestampToSec(ts: string): number | null {
   return parts[0] * 3600 + parts[1] * 60 + parts[2];
 }
 
+type AEAlias = {
+  canonical: string;
+  patterns: RegExp[];
+};
+
+const AE_ALIASES: AEAlias[] = [
+  { canonical: "Sam Vila", patterns: [/\bsam\s+vila\b/i, /\bsam\b/i] },
+  { canonical: "Eric Bower", patterns: [/\beric\s+bower\b/i, /\beric\b/i] },
+  { canonical: "Christian", patterns: [/\bchristian\b/i] },
+  // Do not use /\bmichael\b/i alone — it matches unrelated prospects (e.g. "Michael Okom").
+  { canonical: "Michael Hanson", patterns: [/\bmichael\s+hans[oa]n\b/i, /\bmichael\s+hanson\b/i] },
+];
+
+export function canonicalizeAEName(name: string | null | undefined): string | null {
+  if (!name) return null;
+  const trimmed = name.trim();
+  if (!trimmed) return null;
+  for (const ae of AE_ALIASES) {
+    if (ae.patterns.some((re) => re.test(trimmed))) {
+      return ae.canonical;
+    }
+  }
+  return null;
+}
+
 function isKnownAE(name: string): boolean {
-  const lower = name.toLowerCase();
-  return KNOWN_AES.some((ae) => lower.includes(ae.toLowerCase()));
+  return canonicalizeAEName(name) != null;
 }
 
 export function mapFathomToNormalized(meeting: FathomMeeting): NormalizedCall {
@@ -58,7 +82,7 @@ export function mapFathomToNormalized(meeting: FathomMeeting): NormalizedCall {
 
 const OUR_COMPANY = "Console";
 
-export const KNOWN_AES = ["Sam Vila", "Eric Bower", "Christian", "Michael"];
+export const KNOWN_AES = ["Sam Vila", "Eric Bower", "Christian", "Michael Hanson"];
 
 /**
  * Extract the prospect company name from meeting titles like:
@@ -111,6 +135,7 @@ export function buildMeetingContext(call: NormalizedCall): MeetingContext {
     .map((p) => ({ name: p.name, email: p.email }));
 
   const knownAE = internalAttendees.find((a) => isKnownAE(a.name));
+  const canonicalKnownAE = canonicalizeAEName(knownAE?.name ?? null);
 
   const titleCompany = parseMeetingTitle(call.title);
   const prospectEmailDomain = extractProspectEmailDomainFromParticipants(call.participants);
@@ -120,7 +145,7 @@ export function buildMeetingContext(call: NormalizedCall): MeetingContext {
     ourCompany: OUR_COMPANY,
     prospectCompany: titleCompany,
     prospectEmailDomain,
-    aeName: knownAE?.name ?? internalAttendees[0]?.name ?? null,
+    aeName: canonicalKnownAE ?? knownAE?.name ?? internalAttendees[0]?.name ?? null,
     dealSegment: "mid_tier",
     internalAttendees,
     externalAttendees: call.participants

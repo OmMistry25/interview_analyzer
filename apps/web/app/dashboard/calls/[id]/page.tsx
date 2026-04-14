@@ -1,9 +1,30 @@
+import fs from "node:fs";
+import path from "node:path";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 import Link from "next/link";
 import ReprocessButton from "@/components/ReprocessButton";
 import CallDetailTabs from "@/components/CallDetailTabs";
+import { KNOWN_AES, canonicalizeAEName } from "@transcript-evaluator/core/src/ingestion/mapping";
 
 export const dynamic = "force-dynamic";
+
+/** Local NDJSON debug log (works with `next dev`; cwd is usually `apps/web`). */
+function agentDebugLog(payload: Record<string, unknown>): void {
+  const line = JSON.stringify({ sessionId: "2f1d71", timestamp: Date.now(), ...payload }) + "\n";
+  const candidates = [
+    path.join(process.cwd(), ".cursor", "debug-2f1d71.log"),
+    path.join(process.cwd(), "..", ".cursor", "debug-2f1d71.log"),
+    path.join(process.cwd(), "..", "..", ".cursor", "debug-2f1d71.log"),
+  ];
+  for (const p of candidates) {
+    try {
+      fs.appendFileSync(p, line);
+      return;
+    } catch {
+      // try next path
+    }
+  }
+}
 
 export default async function CallDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -87,14 +108,52 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
     : undefined;
   const evaluation = evalRes.data?.evaluation_json as Record<string, unknown> | null;
   const participants = (participantsRes.data ?? []) as { name: string; role: string }[];
+  // #region agent log
+  agentDebugLog({
+    runId: "local",
+    hypothesisId: "H1_H2",
+    location: "calls/[id]/page.tsx:participants_loaded",
+    message: "Loaded participants for call detail",
+    data: { callId: id, participants },
+  });
+  // #endregion
 
-  const knownAEs = ["Sam Vila", "Eric Bower", "Christian", "Michael"];
   const aeParticipant =
-    participants.find((p) => p.role === "ae" && knownAEs.some((ae) => p.name.toLowerCase().includes(ae.toLowerCase()))) ??
+    participants.find((p) => p.role === "ae" && canonicalizeAEName(p.name)) ??
+    participants.find((p) => p.role === "ae" && KNOWN_AES.some((ae) => p.name.toLowerCase().includes(ae.toLowerCase()))) ??
     participants.find((p) => p.role === "ae");
+  const aeName = canonicalizeAEName(aeParticipant?.name ?? null) ?? aeParticipant?.name ?? null;
+  // #region agent log
+  agentDebugLog({
+    runId: "local",
+    hypothesisId: "H1_H3_H4",
+    location: "calls/[id]/page.tsx:ae_resolution",
+    message: "Computed AE candidate and canonicalized display name",
+    data: {
+      callId: id,
+      knownAEs: KNOWN_AES,
+      aeParticipant: aeParticipant ?? null,
+      aeNameResolved: aeName,
+    },
+  });
+  // #endregion
   const accountName =
     (signals as { account?: { company_name?: { value?: string } } })?.account?.company_name?.value ??
     null;
+
+  // #region agent log
+  agentDebugLog({
+    runId: "local",
+    hypothesisId: "H5",
+    location: "calls/[id]/page.tsx:render_payload",
+    message: "Passing AE/account payload to CallDetailTabs",
+    data: {
+      callId: id,
+      aeName,
+      accountName: accountName !== "unknown" ? accountName : null,
+    },
+  });
+  // #endregion
 
   return (
     <div className="page-container">
@@ -127,7 +186,7 @@ export default async function CallDetailPage({ params }: { params: Promise<{ id:
         dealBrief={dealBrief}
         consoleUseCases={consoleUseCases as Parameters<typeof CallDetailTabs>[0]["consoleUseCases"]}
         participants={participants}
-        aeName={aeParticipant?.name ?? null}
+        aeName={aeName}
         accountName={accountName !== "unknown" ? accountName : null}
       />
 

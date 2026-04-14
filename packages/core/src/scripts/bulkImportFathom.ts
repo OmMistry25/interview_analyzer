@@ -1,3 +1,16 @@
+/**
+ * Bulk enqueue Fathom meetings for worker processing.
+ * Meetings are sorted oldest → newest (scheduled/recording time) before enqueue.
+ *
+ * Date window (meeting time):
+ *   --after=ISO     lower bound inclusive
+ *   --before=ISO    upper bound exclusive (e.g. --before=2025-12-01 = through all of Nov 2025 in UTC)
+ *   --through-nov-2025 | --preset=through-nov-2025
+ *                   same as --before=2025-12-01T00:00:00.000Z unless you already passed --before=
+ *
+ * Typical historical backfill through Nov 2025 (oldest Fathom → end of Nov 2025):
+ *   npx tsx src/scripts/bulkImportFathom.ts --through-nov-2025
+ */
 import dotenv from "dotenv";
 import path from "path";
 
@@ -7,6 +20,45 @@ import { createClient } from "@supabase/supabase-js";
 import { upsertWebhookEvent, enqueueJob } from "../storage/repositories";
 
 const FATHOM_API_URL = "https://api.fathom.ai/external/v1";
+
+/** Exclusive upper bound: includes all meetings with time strictly before this instant (UTC). */
+const THROUGH_NOV_2025_UTC = new Date("2025-12-01T00:00:00.000Z");
+
+function parseBulkImportArgs(): { after: Date | null; before: Date | null } {
+  const argv = process.argv.slice(2);
+  let after: Date | null = null;
+  let before: Date | null = null;
+  let explicitBefore = false;
+  for (const arg of argv) {
+    if (arg.startsWith("--after=")) {
+      const d = new Date(arg.slice("--after=".length));
+      if (!Number.isNaN(d.getTime())) after = d;
+    } else if (arg.startsWith("--before=")) {
+      explicitBefore = true;
+      const d = new Date(arg.slice("--before=".length));
+      if (!Number.isNaN(d.getTime())) before = d;
+    }
+  }
+
+  const presetThroughNov2025 =
+    argv.includes("--through-nov-2025") || argv.includes("--preset=through-nov-2025");
+  if (presetThroughNov2025 && !explicitBefore) {
+    before = THROUGH_NOV_2025_UTC;
+  }
+
+  return { after, before };
+}
+
+/** Sort key for oldest-first backfill (Fathom list order is not guaranteed chronological). */
+function fathomMeetingEpoch(m: Record<string, unknown>): number {
+  const raw =
+    (m.scheduled_start_time as string | undefined) ??
+    (m.recording_start_time as string | undefined) ??
+    (m.created_at as string | undefined) ??
+    "";
+  const t = Date.parse(raw);
+  return Number.isFinite(t) ? t : 0;
+}
 
 interface FathomPage {
   items: Record<string, unknown>[];
@@ -45,6 +97,17 @@ async function fetchAllMeetings(apiKey: string): Promise<Record<string, unknown>
 }
 
 async function main() {
+  const { after, before } = parseBulkImportArgs();
+  if (after) console.log(`Filter: meetings on/after ${after.toISOString()}`);
+  if (before) {
+    console.log(
+      `Filter: meetings strictly before ${before.toISOString()} (exclusive upper bound — includes Nov 2025 when using --through-nov-2025)`
+    );
+  }
+  if (!after && !before) {
+    console.log("Filter: none (all meetings returned by Fathom API)");
+  }
+
   const apiKey = process.env.FATHOM_API_KEY;
   if (!apiKey) throw new Error("FATHOM_API_KEY not set");
 
@@ -56,7 +119,15 @@ async function main() {
 
   console.log("Fetching all meetings from Fathom...");
   const meetings = await fetchAllMeetings(apiKey);
-  console.log(`\nTotal meetings from Fathom: ${meetings.length}`);
+  meetings.sort((a, b) => fathomMeetingEpoch(a) - fathomMeetingEpoch(b));
+  console.log(`\nTotal meetings from Fathom: ${meetings.length} (sorted oldest → newest by scheduled/recording time)`);
+
+  const inDateWindow = (m: Record<string, unknown>) => {
+    const t = fathomMeetingEpoch(m);
+    if (after && t < after.getTime()) return false;
+    if (before && t > before.getTime()) return false;
+    return true;
+  };
 
   // Check which recording_ids already exist in our DB
   const { data: existingCalls } = await db
@@ -69,9 +140,9 @@ async function main() {
   console.log(`Already in DB: ${existingIds.size} calls`);
 
   const toImport = meetings.filter(
-    (m) => !existingIds.has(String(m.recording_id))
+    (m) => inDateWindow(m) && !existingIds.has(String(m.recording_id))
   );
-  console.log(`New meetings to import: ${toImport.length}\n`);
+  console.log(`New meetings to import (after date filters): ${toImport.length}\n`);
 
   if (toImport.length === 0) {
     console.log("Nothing to import. All Fathom meetings are already in the database.");

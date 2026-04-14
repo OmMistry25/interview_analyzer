@@ -60,7 +60,9 @@ async function hubspotFetch<T>(path: string, options?: RequestInit): Promise<T> 
     const body = await res.text();
     throw new Error(`HubSpot API ${res.status}: ${body}`);
   }
-  return res.json() as Promise<T>;
+  const text = await res.text();
+  if (!text) return {} as T;
+  return JSON.parse(text) as T;
 }
 
 /**
@@ -206,4 +208,109 @@ export async function matchDealsToCallIds(
   }
 
   return Array.from(matchedCallIds);
+}
+
+const FREE_EMAIL_DOMAINS = new Set([
+  "gmail.com",
+  "yahoo.com",
+  "hotmail.com",
+  "outlook.com",
+  "icloud.com",
+  "aol.com",
+  "proton.me",
+  "protonmail.com",
+  "live.com",
+  "msn.com",
+]);
+
+export function emailDomain(email: string): string | null {
+  const at = email.lastIndexOf("@");
+  if (at < 0 || at === email.length - 1) return null;
+  return email.slice(at + 1).toLowerCase().trim();
+}
+
+export function isFreeEmailDomain(domain: string): boolean {
+  return FREE_EMAIL_DOMAINS.has(domain.toLowerCase());
+}
+
+/** Returns first HubSpot company id whose `domain` property equals `domain` (case-insensitive). */
+export async function searchCompanyIdByDomain(domain: string): Promise<string | null> {
+  const d = domain.trim().toLowerCase();
+  if (!d) return null;
+
+  const body = {
+    filterGroups: [
+      {
+        filters: [{ propertyName: "domain", operator: "EQ", value: d }],
+      },
+    ],
+    properties: ["name", "domain"],
+    limit: 5,
+  };
+
+  const data = await hubspotFetch<HubSpotSearchResponse>("/crm/v3/objects/companies/search", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
+  if (data.results.length === 0) return null;
+  return data.results[0].id;
+}
+
+/** Fuzzy company match by name (token search). */
+export async function searchCompanyIdByName(companyName: string): Promise<string | null> {
+  const name = companyName.trim();
+  if (name.length < 2) return null;
+
+  const body = {
+    filterGroups: [
+      {
+        filters: [{ propertyName: "name", operator: "CONTAINS_TOKEN", value: name }],
+      },
+    ],
+    properties: ["name", "domain"],
+    limit: 5,
+  };
+
+  const data = await hubspotFetch<HubSpotSearchResponse>("/crm/v3/objects/companies/search", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+
+  if (data.results.length === 0) return null;
+  return data.results[0].id;
+}
+
+export async function fetchCompanyProperty(
+  companyId: string,
+  propertyName: string
+): Promise<string | null> {
+  const q = new URLSearchParams({ properties: propertyName });
+  const obj = await hubspotFetch<HubSpotObjectResponse>(
+    `/crm/v3/objects/companies/${companyId}?${q}`
+  );
+  return obj.properties[propertyName] ?? null;
+}
+
+/**
+ * Sets a single company property. Idempotent when `expectedUnchanged` is true and value already matches.
+ */
+export async function patchCompanyProperty(
+  companyId: string,
+  propertyName: string,
+  value: string,
+  options?: { skipIfUnchanged?: boolean }
+): Promise<{ skipped: boolean }> {
+  if (options?.skipIfUnchanged) {
+    const current = await fetchCompanyProperty(companyId, propertyName);
+    if (current != null && String(current).trim() === value.trim()) {
+      return { skipped: true };
+    }
+  }
+
+  await hubspotFetch(`/crm/v3/objects/companies/${companyId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ properties: { [propertyName]: value } }),
+  });
+  return { skipped: false };
 }
